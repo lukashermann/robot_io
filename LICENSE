@@ -1,0 +1,19 @@
+COPYRIGHT
+
+All other contributions:
+Copyright (c) 2020, the respective contributors
+All rights reserved.
+
+We use a shared copyright model: each contributor holds copyright over
+their contributions. The project versioning records all such
+contribution and copyright details. If a contributor wants to further mark
+their specific copyright on a particular contribution, they should indicate
+their copyright solely in the commit message of the change when it is
+committed.
+
+LICENSE
+
+All code is provided for research purposes only and without any warranty. Any
+commercial use requires our consent. When using the code in your research work,
+you should cite the respective paper. Refer to the readme file in each package
+to learn how to use the program.
