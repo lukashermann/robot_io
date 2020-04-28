@@ -42,7 +42,7 @@ class RealsenseSR300:
                               (rs_option.RS_OPTION_COLOR_GAMMA, 300.0),
                               (rs_option.RS_OPTION_COLOR_CONTRAST, 50.0),
                               (rs_option.RS_OPTION_F200_LASER_POWER, 15)]
-        # self.cam.set_device_options(*zip(*custom_options))
+        self.cam.set_device_options(*zip(*custom_options))
 
     def __del__(self):
         # stop camera and service
@@ -68,11 +68,18 @@ class RealsenseSR300:
             intrinsics['depth'] = intr_depth
         return intrinsics
 
-    def get_camera_matrix(self):
+    def get_projection_matrix(self):
         intr = self.get_intrinsics()['rgb']
         cam_mat  = np.array([[intr['fx'], 0, intr['cx'], 0],
                             [0, intr['fy'], intr['cy'], 0],
                             [0, 0, 1, 0]])
+        return cam_mat
+
+    def get_camera_matrix(self):
+        intr = self.get_intrinsics()['rgb']
+        cam_mat  = np.array([[intr['fx'], 0, intr['cx']],
+                            [0, intr['fy'], intr['cy']],
+                            [0, 0, 1]])
         return cam_mat
 
     def get_image(self, crop=False, flip_image=False):
@@ -84,7 +91,7 @@ class RealsenseSR300:
         if flip_image:
             img = img[::-1, ::-1, :]
         if self.img_type == 'rgb':
-            return img
+            return img, None
         depth_img = self.cam.dac
         if flip_image:
             depth_img = depth_img[::-1, ::-1]
@@ -93,12 +100,16 @@ class RealsenseSR300:
         depth_img *= 0.000125
         return img, depth_img
 
+    def project(self, X):
+        x = self.get_projection_matrix() @ X
+        return x[0:2] / x[2]
+
 
 if __name__ == "__main__":
     import cv2
 
     cam = RealsenseSR300(img_type='rgb_depth')
-    print(cam.get_camera_matrix())
+    print(cam.get_projection_matrix())
     T_tcp_cam = np.array([[0.99987185, -0.00306941, -0.01571176, 0.00169436],
                           [-0.00515523, 0.86743151, -0.49752989, 0.11860651],
                           [0.015156, 0.49754713, 0.86730453, -0.18967231],

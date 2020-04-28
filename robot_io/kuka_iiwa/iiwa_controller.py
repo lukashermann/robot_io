@@ -151,7 +151,7 @@ class IIWAController:
 
     def reached_position(self, pos):
         curr_pos = self.get_joint_info()
-        print(curr_pos)
+        # print(curr_pos)
         cart_offset = np.linalg.norm(np.array(pos)[:3] - curr_pos[:3])
         or_offset = np.sum(np.abs((R.from_dcm(R.from_euler('xyz', pos[3:]).as_dcm() @ np.linalg.inv(R.from_euler('xyz', curr_pos[3:6]).as_dcm()))).as_euler('xyz')))
         return cart_offset < 0.001 and or_offset < 0.001
@@ -160,6 +160,12 @@ class IIWAController:
         curr_pos = self.get_joint_info()
         offset = np.sum(np.abs((np.array(joint_state) - curr_pos[6:13])))
         return offset < 0.001
+
+    def move_to_pose(self, pose, blocking=True):
+        self.send_cartesian_coords_abs(pose)
+        if blocking:
+            while not self.reached_position(pose):
+                time.sleep(0.05)
 
 
 def work_position(controller):
@@ -174,5 +180,5 @@ if __name__ == "__main__":
     iiwa = IIWAController(use_impedance=False)
     iiwa.send_init_message()
     # work_position(iiwa)
-    print(iiwa.get_joint_info()[:6])
-
+    # print(iiwa.get_joint_info()[:6])
+    mechanical_zero(iiwa)
