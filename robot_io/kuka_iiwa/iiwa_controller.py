@@ -16,6 +16,23 @@ JAVA_INIT = 7
 JAVA_ABORT_MOTION = 8
 
 
+def timeit(method):
+    def timed(*args, **kw):
+        ts = time.time()
+        result = method(*args, **kw)
+        te = time.time()
+
+        if 'log_time' in kw:
+            name = kw.get('log_name', method.__name__.upper())
+            kw['log_time'][name] = int((te - ts) * 1000)
+        else:
+            print('%r  %2.2f ms' % \
+                  (method.__name__, (te - ts) * 1000))
+        return result
+
+    return timed
+
+
 class IIWAController:
 
     def __init__(self,
@@ -66,8 +83,7 @@ class IIWAController:
         msg += np.array([workspace_limits[4] * 1000], dtype=np.float64).tostring()
         msg += np.array([workspace_limits[5] * 1000], dtype=np.float64).tostring()
         state = self.send_recv_message(msg, 188)
-        state[:3] *= 0.001
-        return state
+        return self.create_info_dict(state)
 
     def create_robot_msg(self, counter, coord, mode=JAVA_JOINT_MODE):
         assert (type(mode) == int)
@@ -78,13 +94,21 @@ class IIWAController:
         msg += np.array([12345], dtype=np.int64).tostring()
         return msg
 
-    def get_joint_info(self):
+    def get_info(self):
         counter = 0
         msg = np.array([counter], dtype=np.int32).tostring()
         msg += np.array([JAVA_GET_JOINT_INFO], dtype=np.int16).tostring()
         state = self.send_recv_message(msg, 184)
+        return self.create_info_dict(state)
+
+    # @timeit
+    def get_tcp_pose(self):
+        return self.get_info()['tcp_pose']
+
+    def create_info_dict(self, state):
         state[:3] *= 0.001
-        return state
+        return {'tcp_pose': state[:6], 'joint_positions': state[6:13], 'desired_tcp_pose': state[13:17],
+                'force_torque': state[17:23]}
 
     def send_joint_angles(self, joint_angles, mode="degrees"):
         assert (type(joint_angles) == tuple)
@@ -97,8 +121,7 @@ class IIWAController:
         msg = self.create_robot_msg(0, coord, JAVA_JOINT_MODE)
         print("sending joint angles")
         state = self.send_recv_message(msg, 184)
-        state[:3] *= 0.001
-        return state
+        return self.create_info_dict(state)
 
     def send_joint_angles_rad(self, joint_angles):
         assert (type(joint_angles) == tuple)
@@ -107,8 +130,7 @@ class IIWAController:
         msg = self.create_robot_msg(0, coord, JAVA_JOINT_MODE)
         print("sending joint angles")
         state = self.send_recv_message(msg, 184)
-        state[:3] *= 0.001
-        return state
+        return self.create_info_dict(state)
 
     def send_cartesian_coords_rel(self, coords):
         assert (type(coords) == tuple)
@@ -118,9 +140,9 @@ class IIWAController:
         coord = coord.tolist()
         msg = self.create_robot_msg(0, coord, self.control_mode)
         state = self.send_recv_message(msg, 184)
-        state[:3] *= 0.001
-        return state
+        return self.create_info_dict(state)
 
+    @timeit
     def send_cartesian_coords_abs(self, coords):
         assert (type(coords) == tuple)
         assert (len(coords) == 6)
@@ -129,9 +151,9 @@ class IIWAController:
         coord = coord.tolist()
         msg = self.create_robot_msg(0, coord, JAVA_CARTESIAN_MODE_ABS)
         state = self.send_recv_message(msg, 184)
-        state[:3] *= 0.001
-        return state
+        return self.create_info_dict(state)
 
+    @timeit
     def send_cartesian_coords_abs_LIN(self, coords):
         assert (type(coords) == tuple)
         assert (len(coords) == 6)
@@ -140,8 +162,7 @@ class IIWAController:
         coord = coord.tolist()
         msg = self.create_robot_msg(0, coord, JAVA_CARTESIAN_MODE_ABS_LIN)
         state = self.send_recv_message(msg, 184)
-        state[:3] *= 0.001
-        return state
+        return self.create_info_dict(state)
 
     def abort_motion(self):
         counter = 0
@@ -150,15 +171,15 @@ class IIWAController:
         return self.send_recv_message(msg, 188)
 
     def reached_position(self, pos):
-        curr_pos = self.get_joint_info()
+        curr_pos = self.get_tcp_pose()
         # print(curr_pos)
         cart_offset = np.linalg.norm(np.array(pos)[:3] - curr_pos[:3])
         or_offset = np.sum(np.abs((R.from_dcm(R.from_euler('xyz', pos[3:]).as_dcm() @ np.linalg.inv(R.from_euler('xyz', curr_pos[3:6]).as_dcm()))).as_euler('xyz')))
         return cart_offset < 0.001 and or_offset < 0.001
 
     def reached_joint_state(self, joint_state):
-        curr_pos = self.get_joint_info()
-        offset = np.sum(np.abs((np.array(joint_state) - curr_pos[6:13])))
+        curr_pos = self.get_info()['joint_positions']
+        offset = np.sum(np.abs((np.array(joint_state) - curr_pos)))
         return offset < 0.001
 
     def move_to_pose(self, pose, blocking=True):
@@ -182,3 +203,8 @@ if __name__ == "__main__":
     # work_position(iiwa)
     # print(iiwa.get_joint_info()[:6])
     mechanical_zero(iiwa)
+    time.sleep(5)
+    print(iiwa.get_info()['joint_positions'])
+    # iiwa.send_cartesian_coords_abs_LIN((0, -0.71, 0.3, pi, 0, pi / 2))
+    # time.sleep(5)
+    # iiwa.send_cartesian_coords_abs_LIN((0, -0.71, 0.25, pi, 0, pi / 2))

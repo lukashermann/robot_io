@@ -111,12 +111,12 @@ class Kinect4:
 
 def main(args):
     kinect = Kinect4()
-    # kinect.get_image()
-    # time.sleep(1)
-    # np.savez("kinect4_params.npz", dist_coeffs=kinect.dist_coeffs,
-    #                            projection_matrix=kinect.projection_matrix,
-    #                            camera_matrix=kinect.camera_matrix,
-    #                            intrinsics=kinect.intrinsics)
+    kinect.get_image()
+    time.sleep(1)
+    np.savez("kinect4_params_720p.npz", dist_coeffs=kinect.dist_coeffs,
+                               projection_matrix=kinect.projection_matrix,
+                               camera_matrix=kinect.camera_matrix,
+                               intrinsics=kinect.intrinsics)
 
     while 1:
         rgb, depth = kinect.get_image(undistorted=True)

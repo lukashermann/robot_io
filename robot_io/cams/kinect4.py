@@ -11,11 +11,11 @@ class Kinect4:
             config = o3d.io.AzureKinectSensorConfig()
         self.flag_exit = False
         self.align_depth_to_color = align_depth_to_color
-
         self.sensor = o3d.io.AzureKinectSensor(config)
-        if not self.sensor.connect(device):
-            raise RuntimeError('Failed to connect to sensor')
 
+        if not self.sensor.connect(device):
+            # raise RuntimeError('Failed to connect to sensor')
+            pass
         data = np.load("config/kinect4_params.npz", allow_pickle=True)
         self.dist_coeffs = data['dist_coeffs']
         self.camera_matrix = data['camera_matrix']
@@ -24,6 +24,9 @@ class Kinect4:
 
     def get_intrinsics(self):
         return self.intrinsics
+
+    def get_projection_matrix(self):
+        return self.projection_matrix
 
     def get_image(self, undistorted=False):
         rgbd = None
@@ -39,9 +42,9 @@ class Kinect4:
 
 if __name__ == "__main__":
     kinect = Kinect4(config_path='config/default_config_kinect4.json')
-
     while 1:
-        rgb, depth = kinect.get_image(undistorted=True)
+        rgb, depth = kinect.get_image(undistorted=False)
         cv2.imshow("win", depth)
         cv2.imshow("win2", rgb[:,:,::-1])
         cv2.waitKey(1)
+

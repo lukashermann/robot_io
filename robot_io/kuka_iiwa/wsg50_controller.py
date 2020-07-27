@@ -185,11 +185,12 @@ class GripperControllerThread(threading.Thread):
 
     def open_gripper(self):
         print("open gripper")
-        self.release_part(77, 420)
+        self.release_part(109, 420)
 
     def close_gripper(self):
         print("close gripper")
-        self.move_fingers(0, 420)
+        self.move_fingers(10, 420)
+        # self.grasp_part(0, 50)
 
     def home(self):
         preamble = "AAAAAA"
@@ -217,6 +218,7 @@ class GripperControllerThread(threading.Thread):
                 if answer[0] == "Stop" and answer[2] == 'E_SUCCESS':
                     return
 
+    @timeit
     def grasp_part(self, width=30.0, speed=200.0):
         # self.stop()
         preamble = "AAAAAA"
@@ -226,7 +228,17 @@ class GripperControllerThread(threading.Thread):
         checksum = "0000"
         grasp_msg = preamble + command_id + size + payload + checksum
         self._send_msg(grasp_msg)
-        # self.recv_msgs()
+        while True:
+
+            answers = self.recv_msgs()
+            for answer in answers:
+                if answer[0] == 'Grasp' and (answer[2] == 'E_CMD_PENDING' or answer[2] == 'E_ALREADY_RUNNING'):
+                    print(answer)
+                    return
+                elif answer[0] == 'Grasp' and answer[2] == 'E_CMD_ABORTED':
+                    self._send_msg(grasp_msg)
+                else:
+                    print(answer)
 
     @timeit
     def release_part(self, width=75.0, speed=200.0):
@@ -340,7 +352,11 @@ class GripperControllerThread(threading.Thread):
 if __name__ == "__main__":
     gripper = WSG50Controller()
     gripper.close_gripper()
-    time.sleep(1)
+    time.sleep(2)
+    gripper.request_opening_width_and_force()
+    time.sleep(2)
+    print("opening_width: {}".format(gripper.get_opening_width()))
+
     # gripper.open_gripper()
     # for j in range(50):
     #     gripper.request_opening_width_and_force()

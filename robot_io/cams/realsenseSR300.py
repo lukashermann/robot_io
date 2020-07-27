@@ -35,9 +35,11 @@ class RealsenseSR300:
                 pyrs.stream.InfraredStream(fps=fps)])
 
             custom_options = [(rs_option.RS_OPTION_COLOR_ENABLE_AUTO_WHITE_BALANCE, 0),
-                              (rs_option.RS_OPTION_COLOR_WHITE_BALANCE, 3400.0),
+                              # (rs_option.RS_OPTION_COLOR_WHITE_BALANCE, 3400.0),
+                              (rs_option.RS_OPTION_COLOR_WHITE_BALANCE, 4200.0),
                               (rs_option.RS_OPTION_COLOR_ENABLE_AUTO_EXPOSURE, 0),
-                              (rs_option.RS_OPTION_COLOR_EXPOSURE, 300.0),
+                              # (rs_option.RS_OPTION_COLOR_EXPOSURE, 300.0),
+                              (rs_option.RS_OPTION_COLOR_EXPOSURE, 900.0),
                               (rs_option.RS_OPTION_COLOR_BRIGHTNESS, 50.0),
                               (rs_option.RS_OPTION_COLOR_GAMMA, 300.0),
                               (rs_option.RS_OPTION_COLOR_CONTRAST, 50.0),
@@ -89,7 +91,7 @@ class RealsenseSR300:
         if crop:
             img = img[:, 80:560, :]
         if flip_image:
-            img = img[::-1, ::-1, :]
+            img = img[::-1, ::-1, :].copy()
         if self.img_type == 'rgb':
             return img, None
         depth_img = self.cam.dac
@@ -104,6 +106,11 @@ class RealsenseSR300:
         x = self.get_projection_matrix() @ X
         return x[0:2] / x[2]
 
+
+def mask(img):
+    depth_mask = np.zeros_like(img).astype(np.uint8)
+    depth_mask[np.where((img < 0.2))] = 255
+    return depth_mask
 
 if __name__ == "__main__":
     import cv2
@@ -125,7 +132,12 @@ if __name__ == "__main__":
 
 
     while 1:
-        rgb, depth = cam.get_image(crop=False)
+        rgb, depth = cam.get_image()
         cv2.imshow("rgb", rgb[:, :, ::-1])
         cv2.imshow("depth", depth)
+        depth = depth / 4 * (2 ** 16 - 1)
+        depth = depth.astype('uint16')
+        depth = cv2.resize(depth, (240, 320)[::-1], interpolation=cv2.INTER_NEAREST)
+        cv2.imwrite('depth.png', depth)
+        cv2.imshow("mask", mask(depth))
         cv2.waitKey(1)
