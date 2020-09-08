@@ -1,12 +1,13 @@
 import numpy as np
 import cv2
+
 """
 Interface class to get data from RealSense camera.
 """
 try:
     import pyrealsense2 as rs
 except ImportError:
-    print("Try: export LD_LIBRARY_PATH=/home/kuka/librealsense_2/librealsense/build/install/lib/:$LD_LIBRARY_PATH")
+    print("Try: export LD_LIBRARY_PATH=/<PATH_TO_LIBREALSENSE_2>/librealsense/build/install/lib/:$LD_LIBRARY_PATH")
     raise ImportError
 
 
@@ -14,6 +15,7 @@ class RealsenseSR300:
     """
     Interface class to get data from RealSense camera.
     """
+
     def __init__(self, fps=30, img_type="rgb", size=(640, 480)):
 
         assert img_type in ['rgb', "rgb_depth"]
@@ -33,7 +35,7 @@ class RealsenseSR300:
         self.color_sensor = self.profile.get_device().first_color_sensor()
         if img_type == 'rgb_depth':
             self.depth_sensor = self.profile.get_device().first_depth_sensor()
-        self.set_rs_default_options()
+        self.set_rs_options()
 
         # Create an align object
         # rs.align allows us to perform alignment of depth frames to others frames
@@ -67,8 +69,8 @@ class RealsenseSR300:
                             [0, 0, 1]])
         return cam_mat
 
-    def set_rs_default_options(self):
-        params = {
+    def set_rs_options(self, params=None):
+        default_params = {
             'white_balance': 3400.0,
             'exposure': 1000.0,
             'brightness': 50.0,
@@ -77,6 +79,9 @@ class RealsenseSR300:
             'sharpness': 50.0,
             'gain': 64.0
         }
+        if params is None:
+            params = default_params
+
         self.color_sensor.set_option(rs.option.enable_auto_white_balance, 0)
         self.color_sensor.set_option(rs.option.white_balance, params['white_balance'])
         self.color_sensor.set_option(rs.option.enable_auto_exposure, 0)
@@ -92,8 +97,6 @@ class RealsenseSR300:
 
     def get_image(self, crop=False, flip_image=False):
         '''get the the current image as a numpy array'''
-        if crop:
-            raise NotImplementedError
         # Wait for a coherent pair of frames: depth and color
         while True:
             try:
@@ -119,11 +122,16 @@ class RealsenseSR300:
         depth_image = np.asanyarray(depth_frame.get_data())
         depth_image = depth_image.astype(np.float64)
         depth_image *= 0.000125
+        if crop:
+            depth_image = depth_image[:, 80:560]
+        if flip_image:
+            depth_image = depth_image[::-1, ::-1].copy()
         return color_image, depth_image
 
     def project(self, X):
         x = self.get_projection_matrix() @ X
         return x[0:2] / x[2]
+
 
 def test_cam():
     """
@@ -131,9 +139,16 @@ def test_cam():
     """
 
     cam = RealsenseSR300(img_type='rgb_depth')
-
+    cam.set_rs_options(params={'white_balance': 3400.0,
+                               'exposure': 300.0,
+                               'brightness': 50.0,
+                               'contrast': 50.0,
+                               'saturation': 64.0,
+                               'sharpness': 50.0,
+                               'gain': 64.0
+                               })
     while 1:
-        rgb, depth = cam.get_image()
+        rgb, depth = cam.get_image(flip_image=True, crop=True)
         cv2.imshow("rgb", rgb[:, :, ::-1])
         cv2.imshow("depth", depth)
         cv2.waitKey(1)

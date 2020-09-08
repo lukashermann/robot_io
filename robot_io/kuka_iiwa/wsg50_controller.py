@@ -67,14 +67,16 @@ def timeit(method):
 
 
 class WSG50Controller:
-    def __init__(self):
+    def __init__(self, max_opening_width=100, min_opening_width=0):
         self._request_opening_width_and_force = Event()
         self._open_gripper_event = Event()
         self._close_gripper_event = Event()
         self._stop_event = Event()
         self._opening_width = Value('d', -1)
         self._force = Value('d', -1)
-        self._controller_thread = GripperControllerThread(self._request_opening_width_and_force,
+        self._controller_thread = GripperControllerThread(max_opening_width,
+                                                          min_opening_width,
+                                                          self._request_opening_width_and_force,
                                                           self._close_gripper_event, self._open_gripper_event,
                                                           self._stop_event,
                                                           self._opening_width, self._force)
@@ -99,11 +101,16 @@ class WSG50Controller:
     def get_force(self):
         return self._force.value
 
+    def home(self):
+        self._controller_thread.home()
+
 
 class GripperControllerThread(threading.Thread):
-    def __init__(self, request, close_gripper_event, open_gripper_event, stop_event, opening_width, force):
+    def __init__(self, max_opening_width, min_opening_width, request, close_gripper_event, open_gripper_event, stop_event, opening_width, force):
         # self.opening_width_offset = 0.004762348175048828 # without rubber
         self.opening_width_offset = 0.0088
+        self.max_opening_width = max_opening_width
+        self.min_opening_width = min_opening_width
         self.own_address = ("localhost", 50601)
         self.gripper_address = "192.168.42.20"
         self.gripper_port = 6666
@@ -185,11 +192,11 @@ class GripperControllerThread(threading.Thread):
 
     def open_gripper(self):
         print("open gripper")
-        self.release_part(109, 420)
+        self.release_part(self.max_opening_width, 420)
 
     def close_gripper(self):
         print("close gripper")
-        self.move_fingers(10, 420)
+        self.move_fingers(self.min_opening_width, 420)
         # self.grasp_part(0, 50)
 
     def home(self):
@@ -351,7 +358,7 @@ class GripperControllerThread(threading.Thread):
 
 if __name__ == "__main__":
     gripper = WSG50Controller()
-    gripper.close_gripper()
+    gripper.home()
     time.sleep(2)
     gripper.request_opening_width_and_force()
     time.sleep(2)
