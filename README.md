@@ -1,22 +1,28 @@
-### Cameras
+# Cameras
 
-**Azure Kinect (Kinect 4)**
+###Azure Kinect (Kinect 4)
 
-Follow installation guide: http://www.open3d.org/docs/release/tutorial/Basic/azure_kinect.html
+- Follow installation guide: http://www.open3d.org/docs/release/tutorial/Basic/azure_kinect.html
 
-For default usage, start `robot_io/cams/kinect4.py`
+- For default usage, start `$ python robot_io/cams/kinect4.py`
 
-**RealSense SR300/SR305**
+###RealSense SR300/SR305
 
-Follow installation instructions for librealsense2: https://github.com/IntelRealSense/librealsense
+- Follow installation instructions for librealsense2: (librealsense 1 is outdated) https://github.com/IntelRealSense/librealsense \
+```$ pip install pyrealsense2```
 
-(librealsense 1 is outdated)
+- For default usage, start `$ python robot_io/cams/realsenseSR300_librs2.py` 
 
-```pip install pyrealsense2```
+###Framos D435e
+- Get a local copy of framos librealsense2 \
+`$ cp -r /usr/src/librealense2 <PATH/IN/YOUR/HOME>`
+- Install package 
+```
+cd librealsense2
+$ pip install -e .
+```
 
-For default usage, start `robot_io/cams/realsenseSR300_librs2.py` 
-
-### KUKA iiwa
+# KUKA iiwa
 
 Clone Kuka Java Repository on aisgit
 ```git clone https://aisgit.informatik.uni-freiburg.de/hermannl/kuka_java_interface_no_ros```
@@ -30,7 +36,7 @@ Supported control modes:
     - with / without impedance
     - absolute / relative coordinates
     
-### Install SpaceMouse
+# Install SpaceMouse
 ```
 sudo apt install libspnav spacenavd # don't need libspnav-dev?
 conda activate bullet
