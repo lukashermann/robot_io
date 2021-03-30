@@ -114,6 +114,12 @@ class IIWAController:
     def get_tcp_pose(self):
         return self.get_info()['tcp_pose']
 
+    def get_tcp_pos(self):
+        return self.get_info()['tcp_pose'][0:3]
+
+    def get_tcp_angles(self):
+        return self.get_info()['tcp_pose'][3:6]
+
     def _create_info_dict(self, state):
         state[:3] *= 0.001
         return {'tcp_pose': state[:6], 'joint_positions': state[6:13], 'desired_tcp_pose': state[13:17],
@@ -141,7 +147,7 @@ class IIWAController:
         state = self._send_recv_message(msg, 184)
         return self._create_info_dict(state)
 
-    def send_cartesian_coords_rel_PTP(self, coords):
+    def send_cartesian_coords_rel_PTP(self, coords):  # coords in meters
         assert (type(coords) == tuple)
         assert (len(coords) == 6)
         coord = np.array(coords, dtype=np.float64)
@@ -152,7 +158,7 @@ class IIWAController:
         return self._create_info_dict(state)
 
     @timeit
-    def send_cartesian_coords_abs_PTP(self, coords):
+    def send_cartesian_coords_abs_PTP(self, coords): # coords in meters
         assert (type(coords) == tuple)
         assert (len(coords) == 6)
         coord = np.array(coords, dtype=np.float64)
@@ -163,7 +169,7 @@ class IIWAController:
         return self._create_info_dict(state)
 
     @timeit
-    def send_cartesian_coords_rel_LIN(self, coords):
+    def send_cartesian_coords_rel_LIN(self, coords): # coords in meters
         assert (type(coords) == tuple)
         assert (len(coords) == 6)
         coord = np.array(coords, dtype=np.float64)
@@ -174,7 +180,7 @@ class IIWAController:
         return self._create_info_dict(state)
 
     @timeit
-    def send_cartesian_coords_abs_LIN(self, coords):
+    def send_cartesian_coords_abs_LIN(self, coords): # coords in meters
         assert (type(coords) == tuple)
         assert (len(coords) == 6)
         coord = np.array(coords, dtype=np.float64)
@@ -194,8 +200,8 @@ class IIWAController:
         or_threshold = 0.05 if self.use_impedance else 0.001
         curr_pos = self.get_tcp_pose()
         cart_offset = np.linalg.norm(np.array(pos)[:3] - curr_pos[:3])
-        or_offset = np.sum(np.abs((R.from_dcm(R.from_euler('xyz', pos[3:]).as_dcm() @ np.linalg.inv(
-            R.from_euler('xyz', curr_pos[3:6]).as_dcm()))).as_euler('xyz')))
+        or_offset = np.sum(np.abs((R.from_matrix(R.from_euler('xyz', pos[3:]).as_matrix() @ np.linalg.inv(
+            R.from_euler('xyz', curr_pos[3:6]).as_matrix()))).as_euler('xyz')))
         return cart_offset < cart_threshold and or_offset < or_threshold
 
     def reached_joint_state(self, joint_state):

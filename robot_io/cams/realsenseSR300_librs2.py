@@ -147,11 +147,18 @@ def test_cam():
                                'sharpness': 50.0,
                                'gain': 64.0
                                })
-    while 1:
+    for i in range(100):
         rgb, depth = cam.get_image(flip_image=True, crop=True)
         cv2.imshow("rgb", rgb[:, :, ::-1])
-        cv2.imshow("depth", depth)
         cv2.waitKey(1)
+        cam.set_rs_options(params={'white_balance': 3400.0,
+                                   'exposure': 300.0,
+                                   'brightness': 50.0,
+                                   'contrast': 50.0,
+                                   'saturation': 64.0,
+                                   'sharpness': 50.0,
+                                   'gain': 64.0
+                                   })
 
 
 if __name__ == "__main__":

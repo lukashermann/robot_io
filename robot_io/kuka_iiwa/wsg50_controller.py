@@ -357,8 +357,8 @@ class GripperControllerThread(threading.Thread):
 
 
 if __name__ == "__main__":
-    gripper = WSG50Controller()
-    gripper.home()
+    gripper = WSG50Controller(max_opening_width=77)
+    gripper.open_gripper()
     time.sleep(2)
     gripper.request_opening_width_and_force()
     time.sleep(2)
