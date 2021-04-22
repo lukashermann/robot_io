@@ -200,7 +200,7 @@ class GripperControllerThread(threading.Thread):
         self.release_part(self.max_opening_width, 420)
 
     def close_gripper(self):
-        logger.info("gripper controller: close")
+        logging.info("gripper controller: close")
         print("close gripper")
         self.move_fingers(self.min_opening_width, 420)
         # self.grasp_part(0, 50)
