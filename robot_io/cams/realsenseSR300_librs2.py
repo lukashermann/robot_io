@@ -147,7 +147,7 @@ def test_cam():
                                'sharpness': 50.0,
                                'gain': 64.0
                                })
-    for i in range(100):
+    for i in range(10000):
         rgb, depth = cam.get_image(flip_image=True, crop=True)
         cv2.imshow("rgb", rgb[:, :, ::-1])
         cv2.waitKey(1)

@@ -1,11 +1,13 @@
-import socket
-import numpy as np
-import time
 import re
+import time
 import struct
+import socket
+import logging
 import threading
 from multiprocessing import Event
 from multiprocessing import Value
+
+import numpy as np
 
 command_dict = {'20': "Homing",
                 '21': "Move Fingers",
@@ -81,6 +83,9 @@ class WSG50Controller:
                                                           self._stop_event,
                                                           self._opening_width, self._force)
         self._controller_thread.start()
+        # compatibility with simulated WSG50 class
+        self.OPEN_ACTION = 1
+        self.CLOSE_ACTION = -1
 
     def request_opening_width_and_force(self):
         self._request_opening_width_and_force.set()
@@ -191,10 +196,11 @@ class GripperControllerThread(threading.Thread):
         self.recv_msgs()
 
     def open_gripper(self):
-        print("open gripper")
+        logging.info("gripper controller: open")
         self.release_part(self.max_opening_width, 420)
 
     def close_gripper(self):
+        logger.info("gripper controller: close")
         print("close gripper")
         self.move_fingers(self.min_opening_width, 420)
         # self.grasp_part(0, 50)
@@ -209,9 +215,8 @@ class GripperControllerThread(threading.Thread):
         self._send_msg(home_msg)
         # self.recv_msgs()
 
-    @timeit
     def stop(self):
-        print("stop")
+        logging.info("gripper controller: stop")
         preamble = "AAAAAA"
         command_id = "22"
         size = "0000"
@@ -225,7 +230,6 @@ class GripperControllerThread(threading.Thread):
                 if answer[0] == "Stop" and answer[2] == 'E_SUCCESS':
                     return
 
-    @timeit
     def grasp_part(self, width=30.0, speed=200.0):
         # self.stop()
         preamble = "AAAAAA"
@@ -247,9 +251,8 @@ class GripperControllerThread(threading.Thread):
                 else:
                     print(answer)
 
-    @timeit
     def release_part(self, width=75.0, speed=200.0):
-        print("move open")
+        logging.info("gripper controller: release_part")
         # self.stop()
         preamble = "AAAAAA"
         command_id = "26"
@@ -269,10 +272,9 @@ class GripperControllerThread(threading.Thread):
                 else:
                     print(answer)
 
-    @timeit
     def move_fingers(self, width=75.0, speed=200.0):
-        if width > 50: print("move open")
-        else: print("move close")
+        # width > 50 means open otherwise probably close
+        logging.info("gripper controller: move_fingers {}".format(width))
         # self.stop()
         preamble = "AAAAAA"
         command_id = "21"

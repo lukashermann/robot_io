@@ -157,7 +157,6 @@ class IIWAController:
         state = self._send_recv_message(msg, 184)
         return self._create_info_dict(state)
 
-    @timeit
     def send_cartesian_coords_abs_PTP(self, coords): # coords in meters
         assert (type(coords) == tuple)
         assert (len(coords) == 6)
@@ -168,7 +167,6 @@ class IIWAController:
         state = self._send_recv_message(msg, 184)
         return self._create_info_dict(state)
 
-    @timeit
     def send_cartesian_coords_rel_LIN(self, coords): # coords in meters
         assert (type(coords) == tuple)
         assert (len(coords) == 6)
