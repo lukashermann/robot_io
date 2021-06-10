@@ -8,10 +8,11 @@
 
 ###RealSense SR300/SR305
 
-- Follow installation instructions for librealsense2: (librealsense 1 is outdated) https://github.com/IntelRealSense/librealsense \
-```$ pip install pyrealsense2```
-
-- For default usage, start `$ python robot_io/cams/realsenseSR300_librs2.py` 
+First follow installation instructions for librealsense2 [here](https://github.com/IntelRealSense/librealsense)
+```
+pip install pyrealsense2
+python robot_io/cams/realsenseSR300_librs2.py  # to test
+```
 
 ###Framos D435e
 - Get a local copy of framos librealsense2 \
@@ -21,6 +22,7 @@
 cd librealsense2
 $ pip install -e .
 ```
+
 
 # KUKA iiwa
 
@@ -35,11 +37,12 @@ Supported control modes:
     - PTP / LIN motions
     - with / without impedance
     - absolute / relative coordinates
-    
+
+
 # Install SpaceMouse
 ```
-sudo apt install libspnav spacenavd # don't need libspnav-dev?
-conda activate bullet
+sudo apt install libspnav-dev spacenavd
+conda activate robot
 pip install spnav
 ```
 
@@ -47,12 +50,15 @@ Next test if it works, some common pitfalls are:
 1. Turn on SpaceMouse in the back
 2. May not work while charging.
 3. Wireless range is quite limited.
-
-To test execute the following program:
+4. Comment the following two lines in `site-packages/spnav/__init__.py`
 ```
-cd robot_io/input_devices
-python space_mouse.py
-# move the mouse and you should see number scrolling by
+#pythonapi.PyCObject_AsVoidPtr.restype = c_void_p
+#pythonapi.PyCObject_AsVoidPtr.argtypes = [py_object]
 ```
 
-    
+To test execute the following program. When moving the mouse you should
+see numbers scrolling by.
+```
+python robot_io/input_devices/space_mouse.py
+```
+
