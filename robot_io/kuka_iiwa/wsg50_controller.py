@@ -235,7 +235,7 @@ class GripperControllerThread(threading.Thread):
         preamble = "AAAAAA"
         command_id = "25"
         size = "0800"
-        payload = np.array([width, speed], dtype=np.float32).tostring().hex()
+        payload = np.array([width, speed], dtype=np.float32).tobytes().hex()
         checksum = "0000"
         grasp_msg = preamble + command_id + size + payload + checksum
         self._send_msg(grasp_msg)
@@ -257,7 +257,7 @@ class GripperControllerThread(threading.Thread):
         preamble = "AAAAAA"
         command_id = "26"
         size = "0800"
-        payload = np.array([width, speed], dtype=np.float32).tostring().hex()
+        payload = np.array([width, speed], dtype=np.float32).tobytes().hex()
         checksum = "0000"
         msg = preamble + command_id + size + payload + checksum
         self._send_msg(msg)
@@ -280,7 +280,7 @@ class GripperControllerThread(threading.Thread):
         command_id = "21"
         size = "0900"
         payload = "00"
-        payload += np.array([width, speed], dtype=np.float32).tostring().hex()
+        payload += np.array([width, speed], dtype=np.float32).tobytes().hex()
         checksum = "0000"
         msg = preamble + command_id + size + payload + checksum
         self._send_msg(msg)

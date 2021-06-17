@@ -1,7 +1,6 @@
 import socket
 import numpy as np
 import time
-import argparse
 from math import pi
 from scipy.spatial.transform import Rotation as R
 
@@ -26,7 +25,7 @@ def timeit(method):
             name = kw.get('log_name', method.__name__.upper())
             kw['log_time'][name] = int((te - ts) * 1000)
         else:
-            print('%r  %2.2f ms' % \
+            print('%r  %2.2f ms' %
                   (method.__name__, (te - ts) * 1000))
         return result
 
@@ -46,7 +45,6 @@ class IIWAController:
                  cartesian_acc=300,
                  workspace_limits=(-0.25, 0.25, -0.75, -0.41, 0.13, 0.3)):
         """
-
         :param host: "localhost"
         :param port: default port is 50100
         :param use_impedance: Compliant robot. Check kuka docs before using.
@@ -56,7 +54,6 @@ class IIWAController:
         :param cartesian_vel: max translational and rotational velocity of EE, in mm/s, for LIN motions
         :param cartesian_acc: max translational and rotational acceleration of EE, in mm/s**2, for LIN motions
         :param workspace_limits: Cartesian limits of TCP position, [x_min, x_max, y_min, y_max, z_min, z_max], in meter
-
         """
         self.address = (host, port + 500)
         self.other_address = (host, port)
@@ -74,50 +71,62 @@ class IIWAController:
         return np.frombuffer(reply, dtype=np.float64).copy()
 
     def _send_init_message(self):
-        msg = np.array([self.version_counter], dtype=np.int32).tostring()
-        msg += np.array([JAVA_INIT], dtype=np.int16).tostring()
+        msg = np.array([self.version_counter], dtype=np.int32).tobytes()
+        msg += np.array([JAVA_INIT], dtype=np.int16).tobytes()
         return self._send_recv_message(msg, 188)
 
     def set_properties(self, joint_vel, gripper_rot_vel, joint_acc, cartesian_vel, cartesian_acc, use_impedance, workspace_limits):
-        msg = np.array([self.version_counter], dtype=np.int32).tostring()
-        msg += np.array([JAVA_SET_PROPERTIES], dtype=np.int16).tostring()
-        msg += np.array([joint_vel], dtype=np.float64).tostring()
-        msg += np.array([gripper_rot_vel], dtype=np.float64).tostring()
-        msg += np.array([joint_acc], dtype=np.float64).tostring()
-        msg += np.array([cartesian_vel], dtype=np.float64).tostring()
-        msg += np.array([cartesian_acc], dtype=np.float64).tostring()
-        msg += np.array([use_impedance], dtype=np.int16).tostring()
-        msg += np.array([workspace_limits[0] * 1000], dtype=np.float64).tostring()
-        msg += np.array([workspace_limits[1] * 1000], dtype=np.float64).tostring()
-        msg += np.array([workspace_limits[2] * 1000], dtype=np.float64).tostring()
-        msg += np.array([workspace_limits[3] * 1000], dtype=np.float64).tostring()
-        msg += np.array([workspace_limits[4] * 1000], dtype=np.float64).tostring()
-        msg += np.array([workspace_limits[5] * 1000], dtype=np.float64).tostring()
+        msg = np.array([self.version_counter], dtype=np.int32).tobytes()
+        msg += np.array([JAVA_SET_PROPERTIES], dtype=np.int16).tobytes()
+        msg += np.array([joint_vel], dtype=np.float64).tobytes()
+        msg += np.array([gripper_rot_vel], dtype=np.float64).tobytes()
+        msg += np.array([joint_acc], dtype=np.float64).tobytes()
+        msg += np.array([cartesian_vel], dtype=np.float64).tobytes()
+        msg += np.array([cartesian_acc], dtype=np.float64).tobytes()
+        msg += np.array([use_impedance], dtype=np.int16).tobytes()
+        msg += np.array([workspace_limits[0] * 1000], dtype=np.float64).tobytes()
+        msg += np.array([workspace_limits[1] * 1000], dtype=np.float64).tobytes()
+        msg += np.array([workspace_limits[2] * 1000], dtype=np.float64).tobytes()
+        msg += np.array([workspace_limits[3] * 1000], dtype=np.float64).tobytes()
+        msg += np.array([workspace_limits[4] * 1000], dtype=np.float64).tobytes()
+        msg += np.array([workspace_limits[5] * 1000], dtype=np.float64).tobytes()
         state = self._send_recv_message(msg, 188)
         return self._create_info_dict(state)
 
     def _create_robot_msg(self, coord, mode):
         assert (type(mode) == int)
-        msg = np.array([self.version_counter], dtype=np.int32).tostring()
-        msg += np.array([mode], dtype=np.int16).tostring()
+        msg = np.array([self.version_counter], dtype=np.int32).tobytes()
+        msg += np.array([mode], dtype=np.int16).tobytes()
         for c in coord:
-            msg += np.array([c], dtype=np.float64).tostring()
-        msg += np.array([12345], dtype=np.int64).tostring()
+            msg += np.array([c], dtype=np.float64).tobytes()
+        msg += np.array([12345], dtype=np.int64).tobytes()
         return msg
 
     def get_info(self):
-        msg = np.array([self.version_counter], dtype=np.int32).tostring()
-        msg += np.array([JAVA_GET_INFO], dtype=np.int16).tostring()
+        msg = np.array([self.version_counter], dtype=np.int32).tobytes()
+        msg += np.array([JAVA_GET_INFO], dtype=np.int16).tobytes()
         state = self._send_recv_message(msg, 184)
         return self._create_info_dict(state)
 
     def get_tcp_pose(self):
-        return self.get_info()['tcp_pose']
+        """
+        Get TCP current position in world coords
+
+        Returns:
+            gripper_pos: pose as homogeneous transformation matrix, shape (4, 4)
+        """
+        curr_pos = self.get_info()['tcp_pose']
+        matrix = np.eye(4)
+        matrix[:3, :3] = R.from_euler('xyz', curr_pos[3:6]).as_matrix()
+        matrix[:3, 3] = curr_pos[:3]
+        return matrix
 
     def get_tcp_pos(self):
+        """Get TCP position (x, y, z) in [m]"""
         return self.get_info()['tcp_pose'][0:3]
 
     def get_tcp_angles(self):
+        """Get TCP orientation (a, b, c) in [radians]"""
         return self.get_info()['tcp_pose'][3:6]
 
     def _create_info_dict(self, state):
@@ -157,7 +166,7 @@ class IIWAController:
         state = self._send_recv_message(msg, 184)
         return self._create_info_dict(state)
 
-    def send_cartesian_coords_abs_PTP(self, coords): # coords in meters
+    def send_cartesian_coords_abs_PTP(self, coords):  # coords in meters
         assert (type(coords) == tuple)
         assert (len(coords) == 6)
         coord = np.array(coords, dtype=np.float64)
@@ -167,7 +176,7 @@ class IIWAController:
         state = self._send_recv_message(msg, 184)
         return self._create_info_dict(state)
 
-    def send_cartesian_coords_rel_LIN(self, coords): # coords in meters
+    def send_cartesian_coords_rel_LIN(self, coords):  # coords in meters
         assert (type(coords) == tuple)
         assert (len(coords) == 6)
         coord = np.array(coords, dtype=np.float64)
@@ -178,7 +187,7 @@ class IIWAController:
         return self._create_info_dict(state)
 
     @timeit
-    def send_cartesian_coords_abs_LIN(self, coords): # coords in meters
+    def send_cartesian_coords_abs_LIN(self, coords):  # coords in meters
         assert (type(coords) == tuple)
         assert (len(coords) == 6)
         coord = np.array(coords, dtype=np.float64)
@@ -189,17 +198,17 @@ class IIWAController:
         return self._create_info_dict(state)
 
     def abort_motion(self):
-        msg = np.array([self.version_counter], dtype=np.int32).tostring()
-        msg += np.array([JAVA_ABORT_MOTION], dtype=np.int16).tostring()
+        msg = np.array([self.version_counter], dtype=np.int32).tobytes()
+        msg += np.array([JAVA_ABORT_MOTION], dtype=np.int16).tobytes()
         return self._send_recv_message(msg, 188)
 
     def reached_position(self, pos):
         cart_threshold = 0.005 if self.use_impedance else 0.001
         or_threshold = 0.05 if self.use_impedance else 0.001
-        curr_pos = self.get_tcp_pose()
-        cart_offset = np.linalg.norm(np.array(pos)[:3] - curr_pos[:3])
-        or_offset = np.sum(np.abs((R.from_matrix(R.from_euler('xyz', pos[3:]).as_matrix() @ np.linalg.inv(
-            R.from_euler('xyz', curr_pos[3:6]).as_matrix()))).as_euler('xyz')))
+        curr_m = self.get_tcp_pose()
+        cart_offset = np.linalg.norm(np.array(pos)[:3] - curr_m[:3, 3])
+        angle_diff = R.from_euler('xyz', pos[3:]).as_matrix() @ np.linalg.inv(curr_m[:3, :3])
+        or_offset = np.sum(np.abs((R.from_matrix(angle_diff)).as_euler('xyz')))
         return cart_offset < cart_threshold and or_offset < or_threshold
 
     def reached_joint_state(self, joint_state):
@@ -221,14 +230,16 @@ def work_position(controller):
 def mechanical_zero(udp):
     udp.send_joint_angles((0, 0, 0, 0, 0, 0, 0))
 
+
 def iiwa_error_debug(iiwa):
     for i in range(100):
         print(i)
-        if i% 2 == 0:
+        if i % 2 == 0:
             iiwa.send_cartesian_coords_abs_LIN((0, -0.556, 0.20, pi, 0, pi / 4))
         else:
             iiwa.send_cartesian_coords_abs_LIN((0, -0.556, 0.25, pi, 0, pi / 4))
         time.sleep(3)
+
 
 if __name__ == "__main__":
     iiwa = IIWAController(use_impedance=True)
@@ -240,7 +251,7 @@ if __name__ == "__main__":
     # mechanical_zero(iiwa)
     iiwa.send_cartesian_coords_abs_PTP((0, -0.5, 0.25, pi, 0, pi / 2))
     time.sleep(3)
-    iiwa.send_cartesian_coords_rel_PTP((0,0,0.01,0,0,0))
+    iiwa.send_cartesian_coords_rel_PTP((0, 0, 0.01, 0, 0, 0))
     time.sleep(3)
     iiwa.send_cartesian_coords_abs_LIN((0, -0.5, 0.25, pi, 0, pi / 2))
     time.sleep(3)

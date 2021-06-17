@@ -120,7 +120,7 @@ class RealsenseSR300:
 
         # Convert images to numpy arrays
         depth_image = np.asanyarray(depth_frame.get_data())
-        depth_image = depth_image.astype(np.float64)
+        depth_image = depth_image.astype(np.float32)
         depth_image *= 0.000125
         if crop:
             depth_image = depth_image[:, 80:560]
@@ -135,7 +135,7 @@ class RealsenseSR300:
 
 def test_cam():
     """
-    plotn the camera ouput to test if its working.
+    plot the camera output to test if its working.
     """
 
     cam = RealsenseSR300(img_type='rgb_depth')
