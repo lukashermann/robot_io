@@ -63,3 +63,17 @@ see numbers scrolling by.
 python robot_io/input_devices/space_mouse.py
 ```
 
+# Franka Emika Panda
+
+### IK fast
+IK fast is an analytic IK solver. In order to use IK fast, first install `ikfast-pybind`:
+```
+git clone --recursive https://github.com/yijiangh/ikfast_pybind
+cd ikfast_pybind
+# copy panda IK solution .cpp and .h to ikfast_pybind
+cp <PATH>/robot_io/robot_io/panda_control/src/ikfast.h ./src/franka_panda/
+cp <PATH>/robot_io/robot_io/panda_control/src/ikfast0x10000049.Transform6D.0_1_2_3_4_5_f6.cpp ./src/franka_panda/ 
+pip install .
+```
+For creating different IK solutions (e.g. in case of a different gripper) please refer to: 
+`http://docs.ros.org/en/kinetic/api/framefab_irb6600_support/html/doc/ikfast_tutorial.html`

@@ -6,6 +6,7 @@ from panda_robot import PandaArm
 from franka_dataflow.getch import getch
 from enum import Enum
 import gym
+from robot_io.panda_control.IKfast_panda import IKfast
 
 
 class GripperState(Enum):
@@ -14,7 +15,14 @@ class GripperState(Enum):
 
 
 class PandaEnv(gym.Env):
-    def __init__(self, robot, force_threshold=10, torque_threshold=10, k_gains=0.25, d_gains=0.5, workspace_limits=None):
+    def __init__(self,
+                 robot, force_threshold=10,
+                 torque_threshold=10,
+                 k_gains=0.25,
+                 d_gains=0.5,
+                 workspace_limits=None,
+                 ik_solver='kdl',
+                 rest_pose=(-1.465, 1.481, 1.525, -2.435, -1.809, 1.855, -1.231)):
         """
         :param robot: instance of PandaArm class from panda_robot repository
         :param force_threshold: list of len 6 or scalar (gets repeated for all values)
@@ -33,6 +41,9 @@ class PandaEnv(gym.Env):
         self.set_collision_threshold(force_threshold, torque_threshold)
         self.activate_impedance_controller(k_gains, d_gains)
         self.prev_j_des = self.robot._neutral_pose_joints
+        self.ik_solver = ik_solver
+        if ik_solver == 'ik_fast':
+            self.ik_fast = IKfast(rp=rest_pose, weights=(10, 8, 6, 6, 2, 2, 1), num_angles=50)
 
     def set_collision_threshold(self, force_threshold, torque_threshold):
         """
@@ -87,8 +98,17 @@ class PandaEnv(gym.Env):
         Reset robot to neutral position.
         """
         self.robot.move_to_neutral()
-        pos, ori = self.robot.ee_pose()
-        self.orn = ori
+
+    def inverse_kinematics(self, target_pos, target_orn):
+        """
+        :param target_pos: cartesian target position
+        :param target_orn: cartesian target orientation
+        :return: status (True if solution was found), target_joint_positions
+        """
+        if self.ik_solver == 'kdl':
+            return self.robot.inverse_kinematics(target_pos, target_orn)
+        elif self.ik_solver == 'ik_fast':
+            return self.ik_fast.inverse_kinematics(target_pos, target_orn)
 
     def step(self, action):
         """
@@ -99,7 +119,7 @@ class PandaEnv(gym.Env):
 
         target_pos, target_orn, gripper_action = action
         target_pos = self.restrict_workspace(target_pos)
-        status, j = self.robot.inverse_kinematics(target_pos, target_orn)
+        status, j = self.inverse_kinematics(target_pos, target_orn)
         if status:
             j_des = j
         else:
@@ -116,6 +136,10 @@ class PandaEnv(gym.Env):
             self.gripper_state = GripperState.CLOSED
 
     def restrict_workspace(self, target_pos):
+        """
+        :param target_pos: cartesian target position
+        :return: clip target_pos at workspace limits
+        """
         return np.clip(target_pos, self.workspace_limits[0], self.workspace_limits[1])
 
     def render(self, mode='human'):
