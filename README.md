@@ -15,6 +15,7 @@ python robot_io/cams/realsenseSR300_librs2.py  # to test
 ```
 
 ###Framos D435e
+- Make sure the custom version of 'framos librealsense' is installed in the system
 - Get a local copy of framos librealsense2 \
 `$ cp -r /usr/src/librealense2 <PATH/IN/YOUR/HOME>`
 - Install package 
