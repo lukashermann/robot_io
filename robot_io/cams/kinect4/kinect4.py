@@ -4,7 +4,7 @@ import cv2
 
 
 class Kinect4:
-    def __init__(self, device=0, align_depth_to_color=True, config_path='config/default_config_kinect4.json'):
+    def __init__(self, device=1, align_depth_to_color=True, config_path='config/default_config_kinect4.json'):
         if config_path is not None:
             config = o3d.io.read_azure_kinect_sensor_config(config_path)
         else:

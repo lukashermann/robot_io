@@ -1,28 +1,38 @@
 # Cameras
 
 ###Azure Kinect (Kinect 4)
+- On Ubuntu 18 install azure kinect SDK with apt
+- On Ubuntu 20 download libk4a*(-dev) and libk4abt*(-dev) from https://packages.microsoft.com/ubuntu/18.04/prod/pool/main/libk/
+  and k4atools from https://packages.microsoft.com/ubuntu/18.04/prod/pool/main/k/k4a-tools \
+  Install with `sudo dpkg -i`
 
-- Follow installation guide: http://www.open3d.org/docs/release/tutorial/Basic/azure_kinect.html
+- Install Open3D in your Python env with `pip install open3d`
 
-- For default usage, start `$ python robot_io/cams/kinect4.py`
+- For default usage, start `$ python robot_io/cams/kinect4/kinect4.py`
 
 ###RealSense SR300/SR305
 
 First follow installation instructions for librealsense2 [here](https://github.com/IntelRealSense/librealsense)
 ```
 pip install pyrealsense2
-python robot_io/cams/realsenseSR300_librs2.py  # to test
+python robot_io/cams/realsense/realsenseSR300_librs2.py  # to test
 ```
 
 ###Framos D435e
-- Make sure the custom version of 'framos librealsense' is installed in the system
-- Get a local copy of framos librealsense2 \
+- If `/usr/src/librealsense2` does not exist, download FRAMOS software package from
+  https://www.framos.com/en/industrial-depth-cameras#downloads. Follow installation instructions, 
+  make sure to use local admin user (e.g. xam2) to install (file system may NOT be network mounted).
+  Copy `robot_io/cams/framos/setup_files/setup.py` to `/usr/src/librealsense2`.
+- Get a local copy of framos librealsense2 in your Home directory.\
 `$ cp -r /usr/src/librealense2 <PATH/IN/YOUR/HOME>`
+- Uninstall existing installations of pyrealsense2 in your Python env.  
 - Install package 
 ```
 cd librealsense2
-$ pip install -e .
+pip install -e .
 ```
+- Ask Michael Keser to add your user account to the 'video' unix group. Otherwise the camera will not be recognized.
+- Use Ethernet sockets on the ceiling for PoE. 
 
 
 # KUKA iiwa

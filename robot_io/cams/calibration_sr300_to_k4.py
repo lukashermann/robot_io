@@ -27,10 +27,10 @@ import numpy as np
 import cv2
 import ctypes
 
-from kinect4_threading import Kinect4
+from robot_io.cams.kinect4.kinect4_threading import Kinect4
 
 
-from realsenseSR300_threading import RealsenseSR300
+from robot_io.cams.realsense.realsenseSR300_threading import RealsenseSR300
 # from realsenseSR300_threading import RealsenseSR300Thread
 import pyrealsense as pyrs
 from pyrealsense.constants import rs_option

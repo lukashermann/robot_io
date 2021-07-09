@@ -16,7 +16,8 @@ class GripperState(Enum):
 
 class PandaEnv(gym.Env):
     def __init__(self,
-                 robot, force_threshold=10,
+                 robot,
+                 force_threshold=10,
                  torque_threshold=10,
                  k_gains=0.25,
                  d_gains=0.5,

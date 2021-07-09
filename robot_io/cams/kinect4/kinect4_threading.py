@@ -37,7 +37,7 @@ class FpsController:
 
 class Kinect4:
     def __init__(self, device=0, align_depth_to_color=True, config_path='config/default_config_kinect4.json', undistort_video=True):
-        data = np.load("config/kinect4_params.npz", allow_pickle=True)
+        data = np.load("kinect4/config/kinect4_params.npz", allow_pickle=True)
         self.dist_coeffs = data['dist_coeffs']
         self.camera_matrix = data['camera_matrix']
         self.projection_matrix = data['projection_matrix']
@@ -166,7 +166,7 @@ class Kinect4Thread(threading.Thread):
 
 
 if __name__ == "__main__":
-    kinect = Kinect4(config_path='config/default_config_kinect4.json')
+    kinect = Kinect4(config_path='kinect4/config/default_config_kinect4.json')
 
     for i in range(1000):
         rgb, depth = kinect.get_image(undistorted=True)
