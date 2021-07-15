@@ -41,10 +41,13 @@ class Kinect4:
 
 
 if __name__ == "__main__":
-    kinect = Kinect4(config_path='config/default_config_kinect4.json')
-    while 1:
-        rgb, depth = kinect.get_image(undistorted=False)
-        cv2.imshow("win", depth)
-        cv2.imshow("win2", rgb[:,:,::-1])
+    num_cams = 2
+    cams = [Kinect4(device=i) for i in range(num_cams)]
+    for i in range(1000):
+        for i, cam in enumerate(cams):
+            rgb, depth = cam.get_image(undistorted=False)
+            # cv2.imshow("win", depth)
+            cv2.imshow(f"win_{i}", rgb[:, :, ::-1])
         cv2.waitKey(1)
+
 

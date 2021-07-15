@@ -3,7 +3,7 @@ import numpy as np
 import cv2
 import time
 import threading
-
+from pathlib import Path
 
 def timeit(method):
     def timed(*args, **kw):
@@ -37,7 +37,7 @@ class FpsController:
 
 class Kinect4:
     def __init__(self, device=0, align_depth_to_color=True, config_path='config/default_config_kinect4.json', undistort_video=True):
-        data = np.load("kinect4/config/kinect4_params.npz", allow_pickle=True)
+        data = np.load(Path(__file__).parent / "config/kinect4_params.npz", allow_pickle=True)
         self.dist_coeffs = data['dist_coeffs']
         self.camera_matrix = data['camera_matrix']
         self.projection_matrix = data['projection_matrix']
@@ -49,7 +49,7 @@ class Kinect4:
         self.config_path = config_path
         self.undistort_video = undistort_video
         if config_path is not None:
-            self.config = o3d.io.read_azure_kinect_sensor_config(config_path)
+            self.config = o3d.io.read_azure_kinect_sensor_config((Path(__file__).parent / config_path).as_posix())
         else:
             self.config = o3d.io.AzureKinectSensorConfig()
 
@@ -57,6 +57,9 @@ class Kinect4:
 
         self.kinect_thread = None
         self.start_camera_thread()
+
+    def __del__(self):
+        self.stop_camera_thread()
 
     @timeit
     def start_camera_thread(self):
@@ -166,10 +169,11 @@ class Kinect4Thread(threading.Thread):
 
 
 if __name__ == "__main__":
-    kinect = Kinect4(config_path='kinect4/config/default_config_kinect4.json')
-
+    num_cams = 2
+    cams = [Kinect4(device=i) for i in range(num_cams)]
     for i in range(1000):
-        rgb, depth = kinect.get_image(undistorted=True)
-        cv2.imshow("win", depth)
-        cv2.imshow("win2", rgb[:,:,::-1])
+        for i, cam in enumerate(cams):
+            rgb, depth = cam.get_image(undistorted=False)
+            # cv2.imshow("win", depth)
+            cv2.imshow(f"win_{i}", rgb[:, :, ::-1])
         cv2.waitKey(1)

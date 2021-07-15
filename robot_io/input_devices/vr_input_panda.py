@@ -19,6 +19,12 @@ log = logging.getLogger(__name__)
 GRIPPER_CLOSING_ACTION = -1
 GRIPPER_OPENING_ACTION = 1
 
+DEFAULT_RECORD_INFO = {"hold": False,
+                       "hold_event": False,
+                       "down": False,
+                       "triggered": False,
+                       "trigger_release": False}
+
 
 def z_angle_between(a, b):
     """
@@ -74,10 +80,11 @@ class VrInput:
     This class processes the input of the vr controller for teleoperating a real franka emika panda robot.
     """
 
-    def __init__(self, robot, quaternion_convention='wxyz'):
+    def __init__(self, robot, quaternion_convention='wxyz', record_button_queue_len=60):
         """
         :param robot: instance of PandaArm class from panda_robot repository
         :param quaternion_convention: default output
+        :param record_button_queue_len: after how many steps a button counts as "hold"
         """
         self.robot = robot
         self.vr_controller_id = 3
@@ -95,12 +102,15 @@ class VrInput:
         if quaternion_convention == 'wxyz':
             self.change_quaternion_convention = True
         self.p = None
-        self.initialize_bullet()
+        self.record_button_press_counter = 0
+        self.record_button_queue_len = record_button_queue_len
+        self._initialize_bullet()
 
         self.prev_action = None
         self.robot_start_pos_offset = None
+        self.prev_record_info = DEFAULT_RECORD_INFO
 
-    def initialize_bullet(self):
+    def _initialize_bullet(self):
         self.p = bc.BulletClient(connection_mode=p.SHARED_MEMORY)
         cid = self.p._client
         if cid < 0:
@@ -116,24 +126,60 @@ class VrInput:
         """
         :return: EE target pos, orn and gripper action  (in robot base frame)
         """
+        record_info = DEFAULT_RECORD_INFO
         vr_events = self.p.getVREvents()
         if vr_events != ():
+            assert len(vr_events) == 1, "Only one VR controller should be turned on at the same time."
             for event in vr_events:
                 # if event[0] == self.vr_controller_id:
-                vr_action = self.vr_event_to_action(event)
+                vr_action = self._vr_event_to_action(event)
+
+                record_info = self._get_record_info(event)
+
                 # if "dead man's switch" is not pressed, do not update pose
-                if not (event[self.BUTTONS][self.BUTTON_A] & p.VR_BUTTON_IS_DOWN):
-                    return self.prev_action
+                if not self._dead_mans_switch_down(event):
+                    return self.prev_action, record_info
                 # reset button pressed
-                elif event[self.BUTTONS][self.BUTTON_A] & p.VR_BUTTON_WAS_TRIGGERED:
-                    self.reset(vr_action)
+                elif self._dead_mans_switch_triggered(event):
+                    self._reset_vr_coord_offset(vr_action)
 
                 # transform pose from vr coord system to robot base frame
-                robot_action = self.transform_action_vr_to_robot_base(vr_action)
+                robot_action = self._transform_action_vr_to_robot_base(vr_action)
                 self.prev_action = robot_action
-        return self.prev_action
+        return self.prev_action, record_info
 
-    def reset(self, vr_action):
+    def _get_record_info(self, event):
+        record_button_hold = False
+        if self._record_button_down(event):
+            self.record_button_press_counter += 1
+        else:
+            self.record_button_press_counter = 0
+        if self.record_button_press_counter >= self.record_button_queue_len:
+            record_button_hold = True
+
+        self.prev_record_info = {"hold_event": record_button_hold and not self.prev_record_info["hold"],
+                                 "hold": record_button_hold,
+                                 "down": self._record_button_down(event),
+                                 "triggered": self._record_button_triggered(event) and self._record_button_down(event),
+                                 "trigger_release": self._record_button_released(event) and not self.prev_record_info["hold"] and self.prev_record_info["down"]}
+        return self.prev_record_info
+
+    def _dead_mans_switch_down(self, event):
+        return event[self.BUTTONS][self.BUTTON_A] & p.VR_BUTTON_IS_DOWN
+
+    def _dead_mans_switch_triggered(self, event):
+        return event[self.BUTTONS][self.BUTTON_A] & p.VR_BUTTON_WAS_TRIGGERED
+
+    def _record_button_down(self, event):
+        return event[self.BUTTONS][self.BUTTON_B] & p.VR_BUTTON_IS_DOWN
+
+    def _record_button_triggered(self, event):
+        return event[self.BUTTONS][self.BUTTON_B] & p.VR_BUTTON_WAS_TRIGGERED
+
+    def _record_button_released(self, event):
+        return event[self.BUTTONS][self.BUTTON_B] & p.VR_BUTTON_WAS_RELEASED
+
+    def _reset_vr_coord_offset(self, vr_action):
         """
         This is called when the dead man's switch is triggered. The current vr controller pose is
         taken as origin for the proceeding vr motion.
@@ -147,7 +193,7 @@ class VrInput:
         self.robot_start_orn_offset = R.from_matrix(T_VR[:3, :3]).inv() * R.from_quat(np_quat_to_scipy_quat(orn))
         print(self.robot_start_orn_offset.as_euler('xyz'))
 
-    def transform_action_vr_to_robot_base(self, vr_action):
+    def _transform_action_vr_to_robot_base(self, vr_action):
         """
         Transform the vr controller pose to the coordinate system of the robot base.
         Consider the vr pose
@@ -163,7 +209,7 @@ class VrInput:
         robot_orn = scipy_quat_to_np_quat(robot_orn.as_quat())
         return robot_pos, robot_orn, grip
 
-    def vr_event_to_action(self, event):
+    def _vr_event_to_action(self, event):
         """
         :param event: pybullet VR event
         :return: vr_controller_pos, vr_controller_orn, gripper_action
@@ -199,21 +245,20 @@ class VrInput:
             if vr_events != ():
                 for event in vr_events:
                     # if event[0] == self.vr_controller_id:
-                    vr_action = self.vr_event_to_action(event)
-                    if event[self.BUTTONS][self.BUTTON_A] and p.VR_BUTTON_WAS_TRIGGERED and start_pose is None:
+                    vr_action = self._vr_event_to_action(event)
+                    if self._dead_mans_switch_down(event) and start_pose is None:
                         print("start pose set")
                         print("Now move vr controller in your preferred X-direction")
                         start_pose = pos_orn_to_matrix(vr_action[0], vr_action[1])
-                    elif event[self.BUTTONS][
-                        self.BUTTON_B] and p.VR_BUTTON_WAS_TRIGGERED and start_pose is not None and end_pose is None:
+                    elif self._record_button_down(event) and start_pose is not None and end_pose is None:
                         print("end pose set")
                         end_pose = pos_orn_to_matrix(vr_action[0], vr_action[1])
 
                     if start_pose is not None and end_pose is not None:
-                        self.set_vr_coord_transformation(start_pose, end_pose)
+                        self._set_vr_coord_transformation(start_pose, end_pose)
                         return
 
-    def set_vr_coord_transformation(self, start_pose, end_pose):
+    def _set_vr_coord_transformation(self, start_pose, end_pose):
         """
         Calculate rotation between default VR coordinate system and user defined vr coordinate system.
         The x-axis of the user defined coordinate system is defined as the vector from start_pose to end_pose.
@@ -226,3 +271,17 @@ class VrInput:
         z_angle = z_angle_between(new_x, old_x)
         self.vr_coord_rotation = np.eye(4)
         self.vr_coord_rotation[:3, :3] = R.from_euler('z', [z_angle]).as_matrix()
+
+
+if __name__ == "__main__":
+    vr_input = VrInput(robot=None)
+
+    while True:
+        action, info = vr_input.get_vr_action()
+        if info["triggered"]:
+            print("triggered")
+        if info["hold_event"]:
+            print("hold_event")
+        if info["trigger_release"]:
+            print("trigger_release")
+        time.sleep(0.01)
