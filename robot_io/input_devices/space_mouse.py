@@ -16,7 +16,7 @@ except OSError as err:
 
 class SpaceMouse:
     """SpaceMouse input class"""
-    def __init__(self, act_type='continuous', sensitivity=100, mode="5dof", initial_gripper_state='open'):
+    def __init__(self, act_type='continuous', sensitivity=100, mode="5dof", initial_gripper_state='open', **kwargs):
         """
 
         :param act_type: ['continuous', 'discrete'] specifies action output

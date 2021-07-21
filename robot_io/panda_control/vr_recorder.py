@@ -6,27 +6,26 @@ import numpy as np
 import multiprocessing as mp
 import threading
 import logging
-from robot_io.panda_control.utils import TTS
+from robot_io.panda_control.utils import TextToSpeech
 # A logger for this file
 log = logging.getLogger(__name__)
 
 
 class VrRecorder:
-    def __init__(self, save_dir, n_digits=6):
+    def __init__(self, n_digits):
         self.recording = False
         self.queue = mp.Queue()
         self.process = mp.Process(target=self.process_queue, name="MultiprocessingStorageWorker")
         self.process.start()
         self.running = True
         self.save_frame_cnt = 0
-        self.save_dir = Path(save_dir)
-        self.tts = TTS()
+        self.tts = TextToSpeech()
         self.prev_done = False
         self.current_episode_filenames = []
         self.n_digits = n_digits
         self.delete_thread = None
     
-    def step(self, obs, record_info):
+    def step(self, action, obs, record_info):
         if record_info["trigger_release"] and not self.recording and not self.is_deleting:
             self.recording = True
             self.tts.say("start recording")
@@ -37,11 +36,10 @@ class VrRecorder:
         if record_info["hold_event"]:
             if self.recording:
                 self.recording = False
-            print("delete")
             self.delete_last_episode()
 
         if self.recording:
-            self.save(obs)
+            self.save(action, obs)
 
     @property
     def is_deleting(self):
@@ -52,8 +50,9 @@ class VrRecorder:
         self.delete_thread.start()
 
     def _delete_last_episode(self):
+        log.info("Delete episode")
         while not self.queue.empty():
-            print("Wait until files are saved")
+            log.info("Wait until files are saved")
             time.sleep(0.01)
         num_frames = len(self.current_episode_filenames)
         self.tts.say(f"Deleting last episode with {num_frames} frames")
@@ -63,11 +62,11 @@ class VrRecorder:
         self.save_frame_cnt -= num_frames
         self.current_episode_filenames = []
 
-    def save(self, obs):
-        filename = self.save_dir / f"frame_{self.save_frame_cnt:0{self.n_digits}d}.npz"
+    def save(self, action, obs):
+        filename = f"frame_{self.save_frame_cnt:0{self.n_digits}d}.npz"
         self.current_episode_filenames.append(filename)
         self.save_frame_cnt += 1
-        self.queue.put((filename, obs))
+        self.queue.put((filename, action, obs))
 
     def process_queue(self):
         """
@@ -80,8 +79,8 @@ class VrRecorder:
             if msg == "QUIT":
                 self.running = False
                 break
-            (filename, obs) = msg
-            np.savez(filename, **obs)
+            filename, action, obs = msg
+            np.savez(filename, **obs, action=action)
 
     def __enter__(self):
         """

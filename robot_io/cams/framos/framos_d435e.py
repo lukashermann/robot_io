@@ -6,6 +6,8 @@ import numpy as np
 # Import the library
 import pyrealsense2 as rs
 
+from robot_io.cams.kinect4.kinect4_threading import timeit
+
 
 class FramosD435e:
     """
@@ -43,6 +45,7 @@ class FramosD435e:
         # Stop streaming
         self.pipeline.stop()
 
+    @timeit
     def get_image(self):
         """get the the current image as a numpy array"""
         # Wait for a coherent pair of frames: depth and color
@@ -76,11 +79,11 @@ def test_cam():
     while 1:
         rgb, depth = cam.get_image()
         cv2.imshow("rgb", rgb[:, :, ::-1])
-        depth *= (255 / 4)
-        depth = np.clip(depth, 0, 255)
-        depth = depth.astype(np.uint8)
-        depth = cv2.applyColorMap(depth, cv2.COLORMAP_JET)
-        cv2.imshow("depth", depth)
+        # depth *= (255 / 4)
+        # depth = np.clip(depth, 0, 255)
+        # depth = depth.astype(np.uint8)
+        # depth = cv2.applyColorMap(depth, cv2.COLORMAP_JET)
+        # cv2.imshow("depth", depth)
         cv2.waitKey(1)
 
 

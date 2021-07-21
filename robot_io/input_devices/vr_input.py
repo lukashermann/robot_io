@@ -8,7 +8,7 @@ import logging
 
 import numpy as np
 import pybullet as p
-# import quaternion  # noqa
+import quaternion
 from numba.np.arraymath import np_all
 from scipy.spatial.transform.rotation import Rotation as R
 import pybullet_utils.bullet_client as bc
@@ -80,8 +80,9 @@ class VrInput:
     This class processes the input of the vr controller for teleoperating a real franka emika panda robot.
     """
 
-    def __init__(self, robot, quaternion_convention='wxyz', record_button_queue_len=60):
+    def __init__(self, robot, workspace_limits, quaternion_convention='wxyz', record_button_queue_len=60):
         """
+        :param workspace_limits: workspace bounding box [[x_min, y_min, z_min], [x_max, y_max, z_max]]
         :param robot: instance of PandaArm class from panda_robot repository
         :param quaternion_convention: default output
         :param record_button_queue_len: after how many steps a button counts as "hold"
@@ -97,6 +98,7 @@ class VrInput:
         self.gripper_orientation_offset = R.from_euler('xyz', [0, 0, np.pi / 2])
         self.vr_pos_uid = None
         self.vr_coord_rotation = np.eye(4)
+        self.workspace_limits = workspace_limits
         self.change_quaternion_convention = False
         assert quaternion_convention in ('wxyz', 'xyzw')
         if quaternion_convention == 'wxyz':
@@ -108,7 +110,10 @@ class VrInput:
 
         self.prev_action = None
         self.robot_start_pos_offset = None
+        self.out_of_workspace_offset = np.zeros(3)
         self.prev_record_info = DEFAULT_RECORD_INFO
+
+        self.calibrate_vr_coord_system()
 
     def _initialize_bullet(self):
         self.p = bc.BulletClient(connection_mode=p.SHARED_MEMORY)
@@ -122,7 +127,7 @@ class VrInput:
         self.p.configureDebugVisualizer(self.p.COV_ENABLE_VR_RENDER_CONTROLLERS, 0)
         print(f"Connected to server with id: {cid}")
 
-    def get_vr_action(self):
+    def get_action(self):
         """
         :return: EE target pos, orn and gripper action  (in robot base frame)
         """
@@ -165,19 +170,19 @@ class VrInput:
         return self.prev_record_info
 
     def _dead_mans_switch_down(self, event):
-        return event[self.BUTTONS][self.BUTTON_A] & p.VR_BUTTON_IS_DOWN
+        return bool(event[self.BUTTONS][self.BUTTON_A] & p.VR_BUTTON_IS_DOWN)
 
     def _dead_mans_switch_triggered(self, event):
-        return event[self.BUTTONS][self.BUTTON_A] & p.VR_BUTTON_WAS_TRIGGERED
+        return bool(event[self.BUTTONS][self.BUTTON_A] & p.VR_BUTTON_WAS_TRIGGERED)
 
     def _record_button_down(self, event):
-        return event[self.BUTTONS][self.BUTTON_B] & p.VR_BUTTON_IS_DOWN
+        return bool(event[self.BUTTONS][self.BUTTON_B] & p.VR_BUTTON_IS_DOWN)
 
     def _record_button_triggered(self, event):
-        return event[self.BUTTONS][self.BUTTON_B] & p.VR_BUTTON_WAS_TRIGGERED
+        return bool(event[self.BUTTONS][self.BUTTON_B] & p.VR_BUTTON_WAS_TRIGGERED)
 
     def _record_button_released(self, event):
-        return event[self.BUTTONS][self.BUTTON_B] & p.VR_BUTTON_WAS_RELEASED
+        return bool(event[self.BUTTONS][self.BUTTON_B] & p.VR_BUTTON_WAS_RELEASED)
 
     def _reset_vr_coord_offset(self, vr_action):
         """
@@ -193,6 +198,8 @@ class VrInput:
         self.robot_start_orn_offset = R.from_matrix(T_VR[:3, :3]).inv() * R.from_quat(np_quat_to_scipy_quat(orn))
         print(self.robot_start_orn_offset.as_euler('xyz'))
 
+        self.out_of_workspace_offset = np.zeros(3)
+
     def _transform_action_vr_to_robot_base(self, vr_action):
         """
         Transform the vr controller pose to the coordinate system of the robot base.
@@ -207,7 +214,19 @@ class VrInput:
         robot_pos = T_VR_Controller[:3, 3] + self.robot_start_pos_offset
         robot_orn = R.from_matrix(T_VR_Controller[:3, :3]) * self.robot_start_orn_offset
         robot_orn = scipy_quat_to_np_quat(robot_orn.as_quat())
+
+        robot_pos = self._enforce_workspace_limits(robot_pos)
+
         return robot_pos, robot_orn, grip
+
+    def _enforce_workspace_limits(self, robot_pos):
+        robot_pos -= self.out_of_workspace_offset
+        self.out_of_workspace_offset += self.get_out_of_workspace_offset(robot_pos)
+        robot_pos = np.clip(robot_pos, self.workspace_limits[0], self.workspace_limits[1])
+        return robot_pos
+
+    def get_out_of_workspace_offset(self, pos):
+        return np.clip(pos - self.workspace_limits[0], [-np.inf] * 3, 0) + np.clip(pos - self.workspace_limits[1], 0,  [np.inf] * 3)
 
     def _vr_event_to_action(self, event):
         """
@@ -229,7 +248,7 @@ class VrInput:
         print("wait for start button press")
         action = None
         while action is None:
-            action = self.get_vr_action()
+            action = self.get_action()
             time.sleep(0.1)
         print("start button pressed")
 
@@ -275,9 +294,11 @@ class VrInput:
 
 if __name__ == "__main__":
     vr_input = VrInput(robot=None)
-
+    print("sleep 3")
+    time.sleep(3)
+    print("enter loop")
     while True:
-        action, info = vr_input.get_vr_action()
+        action, info = vr_input.get_action()
         if info["triggered"]:
             print("triggered")
         if info["hold_event"]:

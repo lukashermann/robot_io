@@ -1,7 +1,9 @@
 import multiprocessing as mp
+import logging
+log = logging.getLogger(__name__)
 
 
-class TTS:
+class TextToSpeech:
     def __init__(self):
         self.queue = mp.Queue()
         self.process = mp.Process(target=self.tts_worker, name="TTS_worker")
@@ -9,7 +11,7 @@ class TTS:
         self.process.start()
 
     def say(self, text):
-        print(text)
+        log.info(text)
         self.queue.put(text)
 
     def tts_worker(self):

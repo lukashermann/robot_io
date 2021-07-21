@@ -1,0 +1,6 @@
+_target_: robot_io.input_devices.space_mouse.SpaceMouse
+_recursive_: false
+act_type: 'continuous'
+sensitivity: 100
+mode: '5dof'
+initial_gripper_state: 'open'

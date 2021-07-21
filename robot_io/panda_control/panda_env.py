@@ -1,6 +1,7 @@
 import time
 
 import cv2
+import hydra
 import rospy
 import numpy as np
 from panda_robot import PandaArm
@@ -21,15 +22,14 @@ class GripperState(Enum):
 class PandaEnv(gym.Env):
     def __init__(self,
                  robot,
-                 use_gripper_cam=True,
-                 num_static_cams=1,
-                 force_threshold=10,
-                 torque_threshold=10,
-                 k_gains=0.25,
-                 d_gains=0.5,
-                 workspace_limits=None,
-                 ik_solver='kdl',
-                 rest_pose=(-1.465, 1.481, 1.525, -2.435, -1.809, 1.855, -1.231)):
+                 camera_manager_cfg,
+                 force_threshold,
+                 torque_threshold,
+                 k_gains,
+                 d_gains,
+                 workspace_limits,
+                 ik_solver,
+                 rest_pose):
         """
         :param use_gripper_cam: bool
         :param num_static_cams: int
@@ -42,8 +42,6 @@ class PandaEnv(gym.Env):
         :param ik_solver: kdl or ik_fast
         :param rest_pose: joint_positions for null space (only for ik_fast)
         """
-        if workspace_limits is None:
-            workspace_limits = [[0.3, -0.5, 0.1], [0.6, 0.5, 0.5]]
         self.workspace_limits = workspace_limits
         self.robot = robot
         self.gripper = self.robot.get_gripper()
@@ -55,13 +53,7 @@ class PandaEnv(gym.Env):
         self.ik_solver = ik_solver
         if ik_solver == 'ik_fast':
             self.ik_fast = IKfast(rp=rest_pose, joint_limits=self.robot.joint_limits(), weights=(10, 8, 6, 6, 2, 2, 1), num_angles=50)
-        self.gripper_cam = None
-        if use_gripper_cam:
-            self.gripper_cam = FramosD435e(img_type='rgb_depth')
-        self.static_cams = None
-        if num_static_cams > 0:
-            self.static_cams = [Kinect4(device=i) for i in range(num_static_cams)]
-        self.obs = None
+        self.camera_manager = hydra.utils.instantiate(camera_manager_cfg)
 
     def set_collision_threshold(self, force_threshold, torque_threshold):
         """
@@ -140,25 +132,17 @@ class PandaEnv(gym.Env):
         return j_des
 
     def _get_obs(self):
-        obs = {}
-        if self.gripper_cam is not None:
-            rgb_gripper, depth_gripper = self.gripper_cam.get_image()
-            obs['rgb_gripper'] = rgb_gripper
-            obs['depth_gripper'] = depth_gripper
-        if self.static_cams is not None:
-            for i, cam in enumerate(self.static_cams):
-                rgb, depth = cam.get_image()
-                obs[f'rgb_static_{i}'] = rgb
-                obs[f'depth_static_{i}'] = depth
-
+        """
+        :return: dictionary with image obs and state obs
+        """
+        obs = self.camera_manager.get_images()
         obs['robot_state'] = deepcopy(self.robot.state())
-        self.obs = obs
         return obs
 
     def step(self, action):
         """
         Execute one action on the robot.
-        :param action: cartesian action tuple position, orientation, gripper_action
+        :param action: cartesian action tuple (position, orientation, gripper_action)
         :return: obs, reward, done, info
         """
         if action is None:
@@ -189,11 +173,5 @@ class PandaEnv(gym.Env):
         return np.clip(target_pos, self.workspace_limits[0], self.workspace_limits[1])
 
     def render(self, mode='human'):
-        if mode == 'human' and self.obs is not None:
-            if "rgb_gripper" in self.obs:
-                cv2.imshow("rgb_gripper", self.obs["rgb_gripper"][:, :, ::-1])
-            if "rgb_static_0" in self.obs:
-                cv2.imshow("rgb_static_0", self.obs["rgb_static_0"][:, :, ::-1])
-            if "rgb_static_1" in self.obs:
-                cv2.imshow("rgb_static_1", self.obs["rgb_static_1"][:, :, ::-1])
-            cv2.waitKey(1)
+        if mode == 'human':
+            self.camera_manager.render()

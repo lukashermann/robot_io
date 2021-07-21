@@ -1,0 +1,7 @@
+_target_: robot_io.cams.framos.framos_d435e_threading.FramosD435e
+_recursive_: false
+fps: 30
+img_type: "rgb_depth"
+resolution: [640, 480]
+resize_resolution: [200, 200]
+crop_coords: [0, 480, 80, 560]
