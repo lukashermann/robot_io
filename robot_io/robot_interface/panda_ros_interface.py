@@ -1,59 +1,81 @@
 import time
-
-import cv2
-import hydra
-import rospy
 import numpy as np
-from panda_robot import PandaArm
-from franka_dataflow.getch import getch
-from enum import Enum
-import gym
-from robot_io.panda_control.IKfast_panda import IKfast
-from robot_io.cams.framos.framos_d435e import FramosD435e
-from robot_io.cams.kinect4.kinect4_threading import Kinect4
 from copy import deepcopy
+from scipy.spatial.transform.rotation import Rotation as R
+from robot_io.utils.utils import np_quat_to_scipy_quat, pos_orn_to_matrix, euler_to_quat
+from robot_io.robot_interface.base_robot_interface import BaseRobotInterface, GripperState
+from panda_robot import PandaArm
+from robot_io.control.IKfast_panda import IKfast
 
 
-class GripperState(Enum):
-    OPEN = 1
-    CLOSED = -1
-
-
-class PandaEnv(gym.Env):
+class PandaRosInterface(BaseRobotInterface):
     def __init__(self,
-                 robot,
-                 camera_manager_cfg,
                  force_threshold,
                  torque_threshold,
                  k_gains,
                  d_gains,
-                 workspace_limits,
                  ik_solver,
                  rest_pose):
         """
-        :param use_gripper_cam: bool
-        :param num_static_cams: int
-        :param robot: instance of PandaArm class from panda_robot repository
         :param force_threshold: list of len 6 or scalar (gets repeated for all values)
         :param torque_threshold: list of len 7 or scalar (gets repeated for all values)
         :param k_gains: joint impedance k_gains
         :param d_gains: joint impedance d_gains
-        :param workspace_limits: workspace bounding box [[x_min, y_min, z_min], [x_max, y_max, z_max]]
         :param ik_solver: kdl or ik_fast
         :param rest_pose: joint_positions for null space (only for ik_fast)
         """
-        self.workspace_limits = workspace_limits
-        self.robot = robot
+        self.robot = PandaArm()
         self.gripper = self.robot.get_gripper()
-        assert self.gripper is not None
         self.gripper_state = GripperState.OPEN
         self.set_collision_threshold(force_threshold, torque_threshold)
         self.activate_impedance_controller(k_gains, d_gains)
         self.prev_j_des = self.robot._neutral_pose_joints
         self.ik_solver = ik_solver
         if ik_solver == 'ik_fast':
-            self.ik_fast = IKfast(rp=rest_pose, joint_limits=self.robot.joint_limits(), weights=(10, 8, 6, 6, 2, 2, 1), num_angles=50)
-        self.camera_manager = hydra.utils.instantiate(camera_manager_cfg)
+            self.ik_fast = IKfast(rp=rest_pose, joint_limits=self.robot.joint_limits(), weights=(10, 8, 6, 6, 2, 2, 1),
+                                  num_angles=50)
+        super().__init__()
+
+    def move_to_neutral(self):
+        self.robot.move_to_neutral()
+
+    def get_state(self):
+        return deepcopy(self.robot.state())
+
+    def get_tcp_pos_orn(self):
+        pos, orn = self.robot.ee_pose()
+        return pos, np_quat_to_scipy_quat(orn)
+
+    def get_tcp_pose(self):
+        return pos_orn_to_matrix(self.robot.ee_pose())
+
+    def move_async_cart_pos_abs_ptp(self, target_pos, target_orn):
+        if len(target_orn) == 3:
+            target_orn = euler_to_quat(target_orn)
+        j_des = self._inverse_kinematics(target_pos, target_orn)
+
+        self.robot.set_joint_positions_velocities(j_des, [0] * 7)  # impedance control command (see documentation at )
+
+    def move_async_cart_pos_rel_ptp(self, rel_target_pos, rel_target_orn):
+        current_pos, current_orn = self.get_tcp_pos_orn()
+        target_pos = current_pos + rel_target_pos
+        if len(rel_target_orn == 3):
+            target_orn = (R.from_euler('xyz', rel_target_orn) * R.from_quat(current_orn)).as_quat()
+        elif len(rel_target_orn == 4):
+            target_orn = (R.from_quat(rel_target_orn) * R.from_quat(current_orn)).as_quat()
+        else:
+            raise ValueError
+        self.move_async_cart_pos_abs_ptp(target_pos, target_orn)
+
+    def open_gripper(self):
+        if self.gripper_state == GripperState.CLOSED:
+            self.gripper.move_joints(width=0.2, speed=3, wait_for_result=False)
+            self.gripper_state = GripperState.OPEN
+
+    def close_gripper(self):
+        if self.gripper_state == GripperState.OPEN:
+            self.gripper.grasp(width=0.02, force=5, speed=5, epsilon_inner=0.005, epsilon_outer=0.02,wait_for_result=False)
+            self.gripper_state = GripperState.CLOSED
 
     def set_collision_threshold(self, force_threshold, torque_threshold):
         """
@@ -103,13 +125,6 @@ class PandaEnv(gym.Env):
         ctrl_cfg_client = cm.get_current_controller_config_client()
         ctrl_cfg_client.set_controller_gains(k_gains, d_gains)
 
-    def reset(self):
-        """
-        Reset robot to neutral position.
-        """
-        self.robot.move_to_neutral()
-        return self._get_obs()
-
     def _inverse_kinematics(self, target_pos, target_orn):
         """
         :param target_pos: cartesian target position
@@ -130,48 +145,3 @@ class PandaEnv(gym.Env):
             j_des = self.prev_j_des
         self.prev_j_des = j_des
         return j_des
-
-    def _get_obs(self):
-        """
-        :return: dictionary with image obs and state obs
-        """
-        obs = self.camera_manager.get_images()
-        obs['robot_state'] = deepcopy(self.robot.state())
-        return obs
-
-    def step(self, action):
-        """
-        Execute one action on the robot.
-        :param action: cartesian action tuple (position, orientation, gripper_action)
-        :return: obs, reward, done, info
-        """
-        if action is None:
-            return self._get_obs(), 0, False, {}
-        assert isinstance(action, tuple) and len(action) == 3
-
-        target_pos, target_orn, gripper_action = action
-        target_pos = self._restrict_workspace(target_pos)
-        j_des = self._inverse_kinematics(target_pos, target_orn)
-
-        self.robot.set_joint_positions_velocities(j_des, [0] * 7)  # impedance control command (see documentation at )
-
-        if gripper_action == 1 and self.gripper_state == GripperState.CLOSED:
-            self.gripper.move_joints(width=0.2, speed=3, wait_for_result=False)
-            self.gripper_state = GripperState.OPEN
-        elif gripper_action == -1 and self.gripper_state == GripperState.OPEN:
-            self.gripper.grasp(width=0.02, force=5, speed=5, epsilon_inner=0.005, epsilon_outer=0.02,wait_for_result=False)
-            self.gripper_state = GripperState.CLOSED
-
-        obs = self._get_obs()
-        return obs, 0, False, {}
-
-    def _restrict_workspace(self, target_pos):
-        """
-        :param target_pos: cartesian target position
-        :return: clip target_pos at workspace limits
-        """
-        return np.clip(target_pos, self.workspace_limits[0], self.workspace_limits[1])
-
-    def render(self, mode='human'):
-        if mode == 'human':
-            self.camera_manager.render()

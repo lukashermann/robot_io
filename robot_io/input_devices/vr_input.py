@@ -1,4 +1,4 @@
-import math
+
 
 import time
 
@@ -12,6 +12,7 @@ import quaternion
 from numba.np.arraymath import np_all
 from scipy.spatial.transform.rotation import Rotation as R
 import pybullet_utils.bullet_client as bc
+from robot_io.utils.utils import *
 
 # A logger for this file
 log = logging.getLogger(__name__)
@@ -24,55 +25,6 @@ DEFAULT_RECORD_INFO = {"hold": False,
                        "down": False,
                        "triggered": False,
                        "trigger_release": False}
-
-
-def z_angle_between(a, b):
-    """
-    :param a: 3d vector
-    :param b: 3d vector
-    :return: signed angle between vectors around z axis (right handed rule)
-    """
-    return math.atan2(b[1], b[0]) - math.atan2(a[1], a[0])
-
-
-def scipy_quat_to_np_quat(quat):
-    """xyzw to wxyz"""
-    return np.quaternion(quat[3], quat[0], quat[1], quat[2])
-
-
-def np_quat_to_scipy_quat(quat):
-    """wxyz to xyzw"""
-    return np.array([quat.x, quat.y, quat.z, quat.w])
-
-
-def pos_orn_to_matrix(pos, orn):
-    """
-    :param pos: np.array of shape (3,)
-    :param orn: np.array of shape (4,) -> quaternion xyzw
-                np.quaternion -> quaternion wxyz
-                np.array of shape (3,) -> euler angles xyz
-    :return: 4x4 homogeneous transformation
-    """
-    mat = np.eye(4)
-    if isinstance(orn, np.quaternion):
-        orn = np_quat_to_scipy_quat(orn)
-        mat[:3, :3] = R.from_quat(orn).as_matrix()
-    elif len(orn) == 4:
-        mat[:3, :3] = R.from_quat(orn).as_matrix()
-    elif len(orn) == 3:
-        mat[:3, :3] = R.from_euler('xyz', orn).as_matrix()
-    mat[:3, 3] = pos
-    return mat
-
-
-def matrix_to_pos_orn(mat):
-    """
-    :param mat: 4x4 homogeneous transformation
-    :return: tuple(position: np.array of shape (3,), orientation: np.array of shape (4,) -> quaternion xyzw)
-    """
-    orn = scipy_quat_to_np_quat(R.from_matrix(mat[:3, :3]).as_quat())
-    pos = mat[:3, 3]
-    return pos, orn
 
 
 class VrInput:
@@ -116,6 +68,7 @@ class VrInput:
         self.calibrate_vr_coord_system()
 
     def _initialize_bullet(self):
+        log.info("Trying to connect to bullet SHARED_MEMORY. Make sure bullet_vr is running.")
         self.p = bc.BulletClient(connection_mode=p.SHARED_MEMORY)
         cid = self.p._client
         if cid < 0:
@@ -191,11 +144,11 @@ class VrInput:
         :param vr_action: the current vr controller position, orientation and gripper action
         """
         print("reset")
-        pos, orn = self.robot.ee_pose()
+        pos, orn = self.robot.get_tcp_pos_orn()
         T_VR = self.vr_coord_rotation @ pos_orn_to_matrix(vr_action[0], vr_action[1])
 
         self.robot_start_pos_offset = pos - T_VR[:3, 3]
-        self.robot_start_orn_offset = R.from_matrix(T_VR[:3, :3]).inv() * R.from_quat(np_quat_to_scipy_quat(orn))
+        self.robot_start_orn_offset = R.from_matrix(T_VR[:3, :3]).inv() * R.from_quat(orn)
         print(self.robot_start_orn_offset.as_euler('xyz'))
 
         self.out_of_workspace_offset = np.zeros(3)
@@ -213,7 +166,7 @@ class VrInput:
         # robot pos and orn are calculated relative to last reset
         robot_pos = T_VR_Controller[:3, 3] + self.robot_start_pos_offset
         robot_orn = R.from_matrix(T_VR_Controller[:3, :3]) * self.robot_start_orn_offset
-        robot_orn = scipy_quat_to_np_quat(robot_orn.as_quat())
+        robot_orn = robot_orn.as_quat()
 
         robot_pos = self._enforce_workspace_limits(robot_pos)
 

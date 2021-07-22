@@ -6,7 +6,7 @@ import numpy as np
 import multiprocessing as mp
 import threading
 import logging
-from robot_io.panda_control.utils import TextToSpeech
+from robot_io.utils.utils import TextToSpeech
 # A logger for this file
 log = logging.getLogger(__name__)
 

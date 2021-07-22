@@ -1,0 +1,12 @@
+_target_: robot_io.robot_interface.iiwa_interface.IIWAInterface
+_recursive_: false
+host: "localhost"
+port: 50100
+use_impedance: true
+joint_vel: 0.1
+gripper_rot_vel: 0.3
+joint_acc: 0.3
+cartesian_vel: 100
+cartesian_acc: 300
+workspace_limits: [[-0.25, -0.75, 0.13], [0.25, -0.41, 0.3]]
+neutral_pose: [0.5, 0, 0.25, pi, 0, pi / 2]

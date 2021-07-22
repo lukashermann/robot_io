@@ -1,0 +1,173 @@
+import socket
+from enum import Enum
+import numpy as np
+from math import pi
+from robot_io.kuka_iiwa.wsg50_controller import WSG50Controller
+from robot_io.robot_interface.base_robot_interface import BaseRobotInterface, GripperState
+from robot_io.utils.utils import np_quat_to_scipy_quat, pos_orn_to_matrix, euler_to_quat, quat_to_euler
+
+JAVA_JOINT_MODE = 0
+JAVA_CARTESIAN_MODE_REL_PTP = 1
+JAVA_CARTESIAN_MODE_ABS_PTP = 2
+JAVA_CARTESIAN_MODE_REL_LIN = 3
+JAVA_CARTESIAN_MODE_ABS_LIN = 4
+JAVA_SET_PROPERTIES = 5
+JAVA_GET_INFO = 6
+JAVA_INIT = 7
+JAVA_ABORT_MOTION = 8
+
+
+class GripperState(Enum):
+    OPEN = 1
+    CLOSED = -1
+
+
+class IIWAInterface(BaseRobotInterface):
+    def __init__(self,
+                 host="localhost",
+                 port=50100,
+                 use_impedance=True,
+                 joint_vel=0.1,
+                 gripper_rot_vel=0.3,
+                 joint_acc=0.3,
+                 cartesian_vel=100,
+                 cartesian_acc=300,
+                 workspace_limits=((-0.25, -0.75, 0.13), (0.25, -0.41, 0.3)),
+                 neutral_pose=(0, -0.5, 0.25, pi, 0, pi / 2)):
+        """
+        :param host: "localhost"
+        :param port: default port is 50100
+        :param use_impedance: Compliant robot. Check kuka docs before using.
+        :param joint_vel: max velocities of joint 1-6, range [0, 1], for PTP/joint motions
+        :param gripper_rot_vel: max velocities of joint 7, , range [0, 1], for PTP/joint motions
+        :param joint_acc: max acceleration of joint 1-7, range [0,1], for PTP/joint motions
+        :param cartesian_vel: max translational and rotational velocity of EE, in mm/s, for LIN motions
+        :param cartesian_acc: max translational and rotational acceleration of EE, in mm/s**2, for LIN motions
+        :param workspace_limits: Cartesian limits of TCP position, [x_min, x_max, y_min, y_max, z_min, z_max], in meter
+        """
+        self.address = (host, port + 500)
+        self.other_address = (host, port)
+        self.version_counter = 1
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.socket.bind(self.address)
+        self.socket.connect(self.other_address)
+        self.use_impedance = use_impedance
+        self._send_init_message()
+        self.set_properties(joint_vel, gripper_rot_vel, joint_acc, cartesian_vel, cartesian_acc, use_impedance,
+                            workspace_limits)
+        self.neutral_pose = np.array(neutral_pose)
+        self.gripper = WSG50Controller()
+        self.gripper_state = GripperState.OPEN
+        super().__init__()
+
+    def move_to_neutral(self):
+        if len(self.neutral_pose) == 6:
+            target_pos = self.neutral_pose[:3]
+            target_orn = euler_to_quat(self.neutral_pose[3:6])
+            self.move_async_cart_pos_abs_ptp(target_pos, target_orn)
+        elif len(self.neutral_pose) == 7:
+            self.move_async_joint_pos(self.neutral_pose)
+
+    def get_state(self):
+        msg = np.array([self.version_counter], dtype=np.int32).tobytes()
+        msg += np.array([JAVA_GET_INFO], dtype=np.int16).tobytes()
+        state = self._send_recv_message(msg, 184)
+        return self._create_info_dict(state)
+
+    def get_tcp_pose(self):
+        pos, orn = self.get_tcp_pos_orn()
+        return pos_orn_to_matrix(pos, orn)
+
+    def get_tcp_pos_orn(self):
+        pos, orn = self.get_state()['tcp_pose'][0:3], self.get_state()['tcp_pose'][3:6]
+        orn = euler_to_quat(orn)
+        return pos, orn
+
+    def move_async_cart_pos_abs_ptp(self, target_pos, target_orn):
+        pose = self._process_pose(target_pos, target_orn)
+        msg = self._create_robot_msg(pose, JAVA_CARTESIAN_MODE_ABS_PTP)
+        state = self._send_recv_message(msg, 184)
+
+    def move_async_cart_pos_abs_lin(self, target_pos, target_orn):
+        pose = self._process_pose(target_pos, target_orn)
+        msg = self._create_robot_msg(pose, JAVA_CARTESIAN_MODE_ABS_LIN)
+        state = self._send_recv_message(msg, 184)
+
+    def move_async_cart_pos_rel_ptp(self, rel_target_pos, rel_target_orn):
+        pose = self._process_pose(rel_target_pos, rel_target_orn)
+        msg = self._create_robot_msg(pose, JAVA_CARTESIAN_MODE_REL_PTP)
+        state = self._send_recv_message(msg, 184)
+
+    def move_async_cart_pos_rel_lin(self, rel_target_pos, rel_target_orn):
+        pose = self._process_pose(rel_target_pos, rel_target_orn)
+        msg = self._create_robot_msg(pose, JAVA_CARTESIAN_MODE_REL_LIN)
+        state = self._send_recv_message(msg, 184)
+
+    def move_async_joint_pos(self, joint_positions):
+        assert len(joint_positions) == 7
+        joint_positions = np.array(joint_positions, dtype=np.float64)
+        msg = self._create_robot_msg(joint_positions, JAVA_JOINT_MODE)
+        state = self._send_recv_message(msg, 184)
+
+    def abort_motion(self):
+        msg = np.array([self.version_counter], dtype=np.int32).tobytes()
+        msg += np.array([JAVA_ABORT_MOTION], dtype=np.int16).tobytes()
+        return self._send_recv_message(msg, 188)
+
+    def open_gripper(self):
+        if self.gripper_state == GripperState.CLOSED:
+            self.gripper.open_gripper()
+            self.gripper_state = GripperState.OPEN
+
+    def close_gripper(self):
+        if self.gripper_state == GripperState.OPEN:
+            self.gripper.close_gripper()
+            self.gripper_state = GripperState.CLOSED
+
+    def _create_info_dict(self, state):
+        state[:3] *= 0.001
+        return {'tcp_pose': state[:6], 'joint_positions': state[6:13], 'desired_tcp_pose': state[13:17],
+                'force_torque': state[17:23]}
+
+    def _send_recv_message(self, message, recv_msg_size):
+        self.socket.send(bytes(message))
+        reply, address = self.socket.recvfrom(4 * recv_msg_size)
+        return np.frombuffer(reply, dtype=np.float64).copy()
+
+    def _send_init_message(self):
+        msg = np.array([self.version_counter], dtype=np.int32).tobytes()
+        msg += np.array([JAVA_INIT], dtype=np.int16).tobytes()
+        return self._send_recv_message(msg, 188)
+
+    def set_properties(self, joint_vel, gripper_rot_vel, joint_acc, cartesian_vel, cartesian_acc, use_impedance, workspace_limits):
+        msg = np.array([self.version_counter], dtype=np.int32).tobytes()
+        msg += np.array([JAVA_SET_PROPERTIES], dtype=np.int16).tobytes()
+        msg += np.array([joint_vel], dtype=np.float64).tobytes()
+        msg += np.array([gripper_rot_vel], dtype=np.float64).tobytes()
+        msg += np.array([joint_acc], dtype=np.float64).tobytes()
+        msg += np.array([cartesian_vel], dtype=np.float64).tobytes()
+        msg += np.array([cartesian_acc], dtype=np.float64).tobytes()
+        msg += np.array([use_impedance], dtype=np.int16).tobytes()
+        msg += np.array([workspace_limits[0] * 1000], dtype=np.float64).tobytes()
+        msg += np.array([workspace_limits[3] * 1000], dtype=np.float64).tobytes()
+        msg += np.array([workspace_limits[1] * 1000], dtype=np.float64).tobytes()
+        msg += np.array([workspace_limits[4] * 1000], dtype=np.float64).tobytes()
+        msg += np.array([workspace_limits[2] * 1000], dtype=np.float64).tobytes()
+        msg += np.array([workspace_limits[5] * 1000], dtype=np.float64).tobytes()
+        state = self._send_recv_message(msg, 188)
+
+    def _process_pose(self, pos, orn):
+        pos = np.array(pos, dtype=np.float64) * 1000
+        orn = np.array(orn, dtype=np.float64)
+        if len(orn) == 4:
+            orn = quat_to_euler(orn)
+        return np.concatenate([pos, orn])
+
+    def _create_robot_msg(self, pose, mode):
+        assert type(mode) == int
+        msg = np.array([self.version_counter], dtype=np.int32).tobytes()
+        msg += np.array([mode], dtype=np.int16).tobytes()
+        for c in pose:
+            msg += c.tobytes()
+        msg += np.array([12345], dtype=np.int64).tobytes()
+        return msg

@@ -1,11 +1,8 @@
-_target_: robot_io.panda_control.panda_env.PandaEnv
+_target_: robot_io.robot_interface.panda_ros_interface.PandaRosInterface
 _recursive_: false
-robot: ???
-camera_manager_cfg: ${cams}
 force_threshold: 10
 torque_threshold: 10
 k_gains: 0.25
 d_gains: 0.5
-workspace_limits: [[0.3, -0.5, 0.1], [0.6, 0.5, 0.5]]
 ik_solver: 'kdl'
 rest_pose: [-1.465, 1.481, 1.525, -2.435, -1.809, 1.855, -1.231]
