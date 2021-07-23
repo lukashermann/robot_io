@@ -4,6 +4,8 @@ import time
 from math import pi
 from scipy.spatial.transform import Rotation as R
 
+from robot_io.utils.utils import timeit
+
 JAVA_JOINT_MODE = 0
 JAVA_CARTESIAN_MODE_REL_PTP = 1
 JAVA_CARTESIAN_MODE_ABS_PTP = 2
@@ -13,24 +15,6 @@ JAVA_SET_PROPERTIES = 5
 JAVA_GET_INFO = 6
 JAVA_INIT = 7
 JAVA_ABORT_MOTION = 8
-
-
-def timeit(method):
-    def timed(*args, **kw):
-        ts = time.time()
-        result = method(*args, **kw)
-        te = time.time()
-
-        if 'log_time' in kw:
-            name = kw.get('log_name', method.__name__.upper())
-            kw['log_time'][name] = int((te - ts) * 1000)
-        else:
-            print('%r  %2.2f ms' %
-                  (method.__name__, (te - ts) * 1000))
-        return result
-
-    return timed
-
 
 class IIWAController:
 

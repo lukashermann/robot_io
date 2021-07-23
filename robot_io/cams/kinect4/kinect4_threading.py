@@ -5,34 +5,7 @@ import time
 import threading
 from pathlib import Path
 
-def timeit(method):
-    def timed(*args, **kw):
-        ts = time.time()
-        result = method(*args, **kw)
-        te = time.time()
-
-        if 'log_time' in kw:
-            name = kw.get('log_name', method.__name__.upper())
-            kw['log_time'][name] = int((te - ts) * 1000)
-        else:
-            print('%r  %2.2f ms' % \
-                  (method.__name__, (te - ts) * 1000))
-        return result
-
-    return timed
-
-
-class FpsController:
-    def __init__(self, freq):
-        self.loop_time = 1.0 / freq
-        self.prev_time = time.time()
-
-    def step(self):
-        current_time = time.time()
-        delta_t = current_time - self.prev_time
-        if delta_t < self.loop_time:
-            time.sleep(self.loop_time - delta_t)
-        self.prev_time = time.time()
+from robot_io.utils.utils import FpsController, timeit
 
 
 class Kinect4:

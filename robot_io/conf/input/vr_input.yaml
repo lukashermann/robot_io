@@ -3,4 +3,4 @@ _recursive_: false
 robot: ???
 quaternion_convention: 'wxyz'
 record_button_queue_len: 60
-workspace_limits: ${env.workspace_limits}
+workspace_limits: ${robot.workspace_limits}

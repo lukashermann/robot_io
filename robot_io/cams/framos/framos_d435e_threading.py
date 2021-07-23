@@ -10,7 +10,7 @@ import numpy as np
 # Import the library
 import pyrealsense2 as rs
 
-from robot_io.cams.kinect4.kinect4_threading import timeit, FpsController
+from robot_io.utils.utils import timeit, FpsController
 
 
 class FramosD435e:

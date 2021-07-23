@@ -87,3 +87,38 @@ pip install .
 ```
 For creating different IK solutions (e.g. in case of a different gripper) please refer to: 
 `http://docs.ros.org/en/kinetic/api/framefab_irb6600_support/html/doc/ikfast_tutorial.html`
+
+# VR Teleoperation
+
+### Install Steam
+### Install SteamVR
+- In terminal run `$ steam`, it will start downloading an update and create a `.steam` folder in your home directory.
+- In Steam, create user account or use existing account.
+- Install SteamVR
+  - If on `pickup` click `Steam -> Settings -> Downloads -> Steam Library Folders -> Add Library Folder -> /media/hdd/SteamLibrary` to add the existing installation of SteamVR to your Steam account
+  - Otherwise download SteamVR
+- Restart Steam
+- Connect and turn on HTC VIVE
+- Launch `Library -> SteamVR` (if not shown, check `[] Tools` box)
+- If SteamVR throws an  `Error: setcap of vrcompositor-launcher failed`, run `$ sudo setcap CAP_SYS_NICE+ep /media/hdd/SteamLibrary/steamapps/common/SteamVR/bin/linux64/vrcompositor-launcher`
+- Make sure Headset and controller are correctly detected, go through VR setup procedure
+### Install Bullet
+```
+$ git clone https://github.com/bulletphysics/bullet3.git
+$ cd bullet3
+
+# Optional: patch bullet for selecting correct rendering device
+# (only relevant when using EGL and multi-gpu training)
+$ wget https://raw.githubusercontent.com/BlGene/bullet3/egl_remove_works/examples/OpenGLWindow/EGLOpenGLWindow.cpp -O examples/OpenGLWindow/EGLOpenGLWindow.cpp
+
+# for building Bullet for VR run
+$ ./build_cmake_pybullet_double.sh
+
+$ pip install numpy  # important to have numpy installed before installing bullet
+$ pip install -e .  # effectively this is building bullet a second time, but importing is easier when installing with pip
+```
+### Teleoperation
+Make sure to set workspace limits appropriately in `robot_io/conf/robot/<robot_interface.yaml>
+```
+$ python robot_io/control/teleop_robot.py config_name=[panda_teleop|kuka_teleop]
+```

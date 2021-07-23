@@ -1,5 +1,6 @@
 import socket
-from enum import Enum
+import time
+
 import numpy as np
 from math import pi
 from robot_io.kuka_iiwa.wsg50_controller import WSG50Controller
@@ -17,11 +18,6 @@ JAVA_INIT = 7
 JAVA_ABORT_MOTION = 8
 
 
-class GripperState(Enum):
-    OPEN = 1
-    CLOSED = -1
-
-
 class IIWAInterface(BaseRobotInterface):
     def __init__(self,
                  host="localhost",
@@ -32,8 +28,8 @@ class IIWAInterface(BaseRobotInterface):
                  joint_acc=0.3,
                  cartesian_vel=100,
                  cartesian_acc=300,
-                 workspace_limits=((-0.25, -0.75, 0.13), (0.25, -0.41, 0.3)),
-                 neutral_pose=(0, -0.5, 0.25, pi, 0, pi / 2)):
+                 workspace_limits=((0.3, -0.3, 0.2), (0.6, 0.3, 0.4)),
+                 neutral_pose=(0.5, 0, 0.25, pi, 0, pi / 2)):
         """
         :param host: "localhost"
         :param port: default port is 50100
@@ -65,6 +61,8 @@ class IIWAInterface(BaseRobotInterface):
             target_pos = self.neutral_pose[:3]
             target_orn = euler_to_quat(self.neutral_pose[3:6])
             self.move_async_cart_pos_abs_ptp(target_pos, target_orn)
+            while not self.reached_position(target_pos, target_orn):
+                time.sleep(0.1)
         elif len(self.neutral_pose) == 7:
             self.move_async_joint_pos(self.neutral_pose)
 
@@ -124,7 +122,8 @@ class IIWAInterface(BaseRobotInterface):
             self.gripper.close_gripper()
             self.gripper_state = GripperState.CLOSED
 
-    def _create_info_dict(self, state):
+    @staticmethod
+    def _create_info_dict(state):
         state[:3] *= 0.001
         return {'tcp_pose': state[:6], 'joint_positions': state[6:13], 'desired_tcp_pose': state[13:17],
                 'force_torque': state[17:23]}
@@ -148,15 +147,16 @@ class IIWAInterface(BaseRobotInterface):
         msg += np.array([cartesian_vel], dtype=np.float64).tobytes()
         msg += np.array([cartesian_acc], dtype=np.float64).tobytes()
         msg += np.array([use_impedance], dtype=np.int16).tobytes()
-        msg += np.array([workspace_limits[0] * 1000], dtype=np.float64).tobytes()
-        msg += np.array([workspace_limits[3] * 1000], dtype=np.float64).tobytes()
-        msg += np.array([workspace_limits[1] * 1000], dtype=np.float64).tobytes()
-        msg += np.array([workspace_limits[4] * 1000], dtype=np.float64).tobytes()
-        msg += np.array([workspace_limits[2] * 1000], dtype=np.float64).tobytes()
-        msg += np.array([workspace_limits[5] * 1000], dtype=np.float64).tobytes()
+        msg += np.array([workspace_limits[0][0] * 1000], dtype=np.float64).tobytes()
+        msg += np.array([workspace_limits[1][0] * 1000], dtype=np.float64).tobytes()
+        msg += np.array([workspace_limits[0][1] * 1000], dtype=np.float64).tobytes()
+        msg += np.array([workspace_limits[1][1] * 1000], dtype=np.float64).tobytes()
+        msg += np.array([workspace_limits[0][2] * 1000], dtype=np.float64).tobytes()
+        msg += np.array([workspace_limits[1][2] * 1000], dtype=np.float64).tobytes()
         state = self._send_recv_message(msg, 188)
 
-    def _process_pose(self, pos, orn):
+    @staticmethod
+    def _process_pose(pos, orn):
         pos = np.array(pos, dtype=np.float64) * 1000
         orn = np.array(orn, dtype=np.float64)
         if len(orn) == 4:
@@ -171,3 +171,12 @@ class IIWAInterface(BaseRobotInterface):
             msg += c.tobytes()
         msg += np.array([12345], dtype=np.int64).tobytes()
         return msg
+
+
+if __name__ == "__main__":
+    robot = IIWAInterface()
+    robot.move_to_neutral()
+    pos, orn = robot.get_tcp_pos_orn()
+    pos[2] += 0.05
+    robot.move_async_cart_pos_abs_ptp(pos, orn)
+
