@@ -30,6 +30,7 @@ def wrap_train(config_name):
             fps.step()
             # print(1 / (time.time() - t1))
             t1 = time.time()
+    main()
 
 
 def setup_config():
