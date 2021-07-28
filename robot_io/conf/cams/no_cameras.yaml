@@ -4,5 +4,5 @@ use_gripper_cam: false
 use_static_cam: false
 
 defaults:
-  - gripper_cam: framos
+  - gripper_cam: realsense
   - static_cam: kinect_threading

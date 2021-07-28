@@ -6,14 +6,14 @@
 # A1: We are recording videos of each interaction and we need to maintain a fixed frame rate for the video.
 # Therefore we use a thread for camera to make its frame process independent of other stuff.
 
-# q2: what are the kinect4_params.npz for in comparision to default_config_kinect4.json?
-# A2: in kinect4_params.npz we store kinect4 parameters like camera intrinsics and camera distortion coefficients. These parameters are camera specific.
-# With default_config_kinect4.json we can configure the output of camera as we wish, for example we can set its frame rate or resolution.
+# q2: what are the kinect4_params_1080p.npz for in comparision to config_kinect4_1080p.json?
+# A2: in kinect4_params_1080p.npz we store kinect4 parameters like camera intrinsics and camera distortion coefficients. These parameters are camera specific.
+# With config_kinect4_1080p.json we can configure the output of camera as we wish, for example we can set its frame rate or resolution.
 #robot_io.cams.
 
 # q3: why can does it fail to open device here, but it works inside kinect4.py?
 # A3: you have already opened device above
-# k4 = Kinect4(config_path='config/default_config_kinect4.json')
+# k4 = Kinect4(config_path='config/config_kinect4_1080p.json')
 
 # q5: hardware reset problem for you?
 # A5: no, in fact I assume that we will find below parameters (by hand or with optimization) and always start camera with these options.
@@ -46,7 +46,7 @@ import matplotlib.pyplot as plt
 
 # note: threading makes big difference for sr300 rgb images
 # sr300 = RealsenseSR300Thread(img_type='rgb_depth')
-# k4 = Kinect4(config_path='config/default_config_kinect4.json')
+# k4 = Kinect4(config_path='config/config_kinect4_1080p.json')
 
 
 # # q7: depth is aligned to rgb?
