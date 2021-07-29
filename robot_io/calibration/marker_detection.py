@@ -64,11 +64,7 @@ def detect_marker(rgb, marker_size, camera_matrix, marker_id=None, dist_coeffs=n
             dcm[:3, :3] = r.as_matrix()
             return True, dcm
 
-
-
-
-
-
+    return False, None
 
 
 if __name__ == "__main__":
