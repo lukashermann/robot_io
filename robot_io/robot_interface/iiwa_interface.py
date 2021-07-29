@@ -108,7 +108,7 @@ class IIWAInterface(BaseRobotInterface):
         state = self._send_recv_message(msg, 184)
 
     def move_joint_pos(self, joint_positions):
-        self.move_async_joint_pos(target_pos, target_orn)
+        self.move_async_joint_pos(joint_positions)
         while not self.reached_joint_pos(joint_positions):
             time.sleep(0.05)
 
