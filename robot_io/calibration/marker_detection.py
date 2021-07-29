@@ -30,36 +30,43 @@ def detect_marker(rgb, marker_size, camera_matrix, marker_id=None, dist_coeffs=n
 
         return False, None
 
-    if marker_id is not None and marker_id in ids:
-        pos = np.where(ids == marker_id)[0][0]
-        corners = corners[pos: pos + 1]
-        # estimate pose of each marker and return the values
-        # rvet and tvec-different from camera coefficients
-        rvec, tvec, _ = aruco.estimatePoseSingleMarkers(corners, marker_size, camera_matrix, dist_coeffs)
-        # (rvec-tvec).any() # get rid of that nasty numpy value array error
+    if marker_id is not None:
+        if marker_id not in ids:
+            return False, None
+        else:
+            pos = np.where(ids == marker_id)[0][0]
+            corners = corners[pos: pos + 1]
+            # estimate pose of each marker and return the values
+            # rvet and tvec-different from camera coefficients
+            rvec, tvec, _ = aruco.estimatePoseSingleMarkers(corners, marker_size, camera_matrix, dist_coeffs)
+            # (rvec-tvec).any() # get rid of that nasty numpy value array error
 
-        # draw axis for the aruco markers
-        aruco.drawAxis(rgb, camera_matrix, dist_coeffs, rvec[0], tvec[0], 0.1)
+            # draw axis for the aruco markers
+            aruco.drawAxis(rgb, camera_matrix, dist_coeffs, rvec[0], tvec[0], 0.1)
 
-        # draw a square around the markers
-        aruco.drawDetectedMarkers(rgb, corners)
+            # draw a square around the markers
+            aruco.drawDetectedMarkers(rgb, corners)
 
-        # code to show ids of the marker found
-        strg = ''
-        for i in range(0, ids.size):
-            strg += str(ids[i][0]) + ', '
+            # code to show ids of the marker found
+            strg = ''
+            for i in range(0, ids.size):
+                strg += str(ids[i][0]) + ', '
 
-        cv2.putText(rgb, "Id: " + strg, (0, 64), font, 1, (0, 255, 0), 2, cv2.LINE_AA)
-        print("marker detected with marker_id {}".format(strg))
-        #
-        cv2.imshow("win2", rgb[:,:,::-1])
-        cv2.waitKey(1)
+            cv2.putText(rgb, "Id: " + strg, (0, 64), font, 1, (0, 255, 0), 2, cv2.LINE_AA)
+            print("marker detected with marker_id {}".format(strg))
+            #
+            cv2.imshow("win2", rgb[:,:,::-1])
+            cv2.waitKey(1)
 
-        r = R.from_rotvec(rvec[0])
-        dcm = np.eye(4)
-        dcm[:3, 3] = tvec
-        dcm[:3, :3] = r.as_matrix()
-        return True, dcm
+            r = R.from_rotvec(rvec[0])
+            dcm = np.eye(4)
+            dcm[:3, 3] = tvec
+            dcm[:3, :3] = r.as_matrix()
+            return True, dcm
+
+
+
+
 
 
 
