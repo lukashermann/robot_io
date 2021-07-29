@@ -2,6 +2,8 @@ import math
 import time
 
 import numpy as np
+import quaternion
+
 import multiprocessing as mp
 from scipy.spatial.transform.rotation import Rotation as R
 
@@ -36,8 +38,8 @@ def euler_to_quat(euler_angles):
 
 
 def quat_to_euler(quat):
-    """xyz euler angles to xyzw quat"""
-    return R.from_quat(quat).as_euler('xyz')
+    """xyzw quat to xyz euler angles"""
+    return R.from_quat([quat.w, quat.x, quat.y, quat.z]).as_euler('xyz')
 
 
 def inverse_frame(frame):
@@ -68,7 +70,7 @@ def pos_orn_to_matrix(pos, orn):
         mat[:3, :3] = R.from_quat(orn).as_matrix()
     elif len(orn) == 3:
         mat[:3, :3] = R.from_euler('xyz', orn).as_matrix()
-    mat[:3, 3] = pos[:3,:]
+    mat[:3, 3] = pos[:3]
     return mat
 
 
