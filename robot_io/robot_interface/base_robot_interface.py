@@ -81,6 +81,13 @@ class BaseRobotInterface:
         """
         raise NotImplementedError
 
+    def move_joint_pos(self, joint_positions):
+        """
+        Move robot to absolute joint positions, blocking.
+        :param joint_positions: (j1, ..., jn)
+        """
+        raise NotImplementedError
+
     def move_async_joint_vel(self, joint_velocities):
         """
         Move robot with joint velocities, non blocking.
@@ -116,3 +123,11 @@ class BaseRobotInterface:
         pos_error = np.linalg.norm(target_pos - curr_pos)
         orn_error = np.linalg.norm((R.from_quat(target_orn) * R.from_quat(curr_orn).inv()).as_rotvec())
         return pos_error < cart_threshold and orn_error < orn_threshold
+
+    def reached_joint_pos(self, joint_position : np.ndarray, threshold=0.001):
+        """
+        Checks if the robot has reached the given joint position
+        :param joint_position: Desired joint position [j0, ... ,jn]
+        :retun: True if position is reached
+        """
+        raise NotImplementedError

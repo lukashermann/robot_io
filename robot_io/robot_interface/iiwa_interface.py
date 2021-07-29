@@ -107,6 +107,11 @@ class IIWAInterface(BaseRobotInterface):
         msg = self._create_robot_msg(joint_positions, JAVA_JOINT_MODE)
         state = self._send_recv_message(msg, 184)
 
+    def move_joint_pos(self, joint_positions):
+        self.move_async_joint_pos(target_pos, target_orn)
+        while not self.reached_joint_pos(joint_positions):
+            time.sleep(0.05)
+
     def abort_motion(self):
         msg = np.array([self.version_counter], dtype=np.int32).tobytes()
         msg += np.array([JAVA_ABORT_MOTION], dtype=np.int16).tobytes()
@@ -121,6 +126,16 @@ class IIWAInterface(BaseRobotInterface):
         if self.gripper_state == GripperState.OPEN:
             self.gripper.close_gripper()
             self.gripper_state = GripperState.CLOSED
+
+    def reached_joint_pos(self, joint_position : np.ndarray, threshold=0.001):
+        """
+        Checks if the robot has reached the given joint position
+        :param joint_position: Desired joint position [j0, ... ,jn]
+        :retun: True if position is reached
+        """
+        curr_pos = self.get_state()['joint_positions']
+        offset = np.max(np.abs(joint_position - curr_pos))
+        return offset < threshold
 
     @staticmethod
     def _create_info_dict(state):
