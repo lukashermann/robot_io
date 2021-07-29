@@ -5,6 +5,11 @@ import numpy as np
 import multiprocessing as mp
 from scipy.spatial.transform.rotation import Rotation as R
 
+def pos3(x, y, z):
+    return np.array([x, y, z, 1])
+
+def vec3(x, y, z):
+    return np.array([x, y, z, 0])
 
 def z_angle_between(a, b):
     """
@@ -35,6 +40,18 @@ def quat_to_euler(quat):
     return R.from_quat(quat).as_euler('xyz')
 
 
+def inverse_frame(frame):
+    """
+    :param frame: 4x4 Matrix
+    :type frame: Matrix
+    :return: 4x4 Matrix
+    :rtype: Matrix
+    """
+    inv = np.eye(4)
+    inv[:3, :3] = frame[:3, :3].T
+    inv[:3, 3] = np.dot(-inv[:3, :3], frame[:3, 3])
+    return inv
+
 def pos_orn_to_matrix(pos, orn):
     """
     :param pos: np.array of shape (3,)
@@ -51,7 +68,7 @@ def pos_orn_to_matrix(pos, orn):
         mat[:3, :3] = R.from_quat(orn).as_matrix()
     elif len(orn) == 3:
         mat[:3, :3] = R.from_euler('xyz', orn).as_matrix()
-    mat[:3, 3] = pos
+    mat[:3, 3] = pos[:3,:]
     return mat
 
 
