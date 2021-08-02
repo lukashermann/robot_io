@@ -34,6 +34,9 @@ class Camera:
     def get_camera_matrix(self):
         raise NotImplementedError
 
+    def get_dist_coeffs(self):
+        raise NotImplementedError
+
     def compute_pointcloud(self, depth_img):
         raise NotImplementedError
 

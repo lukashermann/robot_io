@@ -57,6 +57,9 @@ class Kinect4(Camera):
     def get_camera_matrix(self):
         return self.camera_matrix
 
+    def get_dist_coeffs(self):
+        return self.dist_coeffs
+
     def _get_image(self):
         rgbd = None
         while rgbd is None:

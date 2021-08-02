@@ -102,6 +102,9 @@ class Realsense(Camera):
                             [0, 0, 1]])
         return cam_mat
 
+    def get_dist_coeffs(self):
+        return np.zeros(12)
+
 
 def test_cam():
     # Import OpenCV for easy image rendering

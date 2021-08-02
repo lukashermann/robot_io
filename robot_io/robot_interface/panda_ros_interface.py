@@ -1,6 +1,8 @@
 import time
 import numpy as np
 from copy import deepcopy
+
+import rospy
 from scipy.spatial.transform.rotation import Rotation as R
 from robot_io.utils.utils import np_quat_to_scipy_quat, pos_orn_to_matrix, euler_to_quat
 from robot_io.robot_interface.base_robot_interface import BaseRobotInterface, GripperState
@@ -15,7 +17,8 @@ class PandaRosInterface(BaseRobotInterface):
                  k_gains,
                  d_gains,
                  ik_solver,
-                 rest_pose):
+                 rest_pose,
+                 workspace_limits):
         """
         :param force_threshold: list of len 6 or scalar (gets repeated for all values)
         :param torque_threshold: list of len 7 or scalar (gets repeated for all values)
@@ -24,6 +27,7 @@ class PandaRosInterface(BaseRobotInterface):
         :param ik_solver: kdl or ik_fast
         :param rest_pose: joint_positions for null space (only for ik_fast)
         """
+        rospy.init_node("PandaRosInterface")
         self.robot = PandaArm()
         self.gripper = self.robot.get_gripper()
         self.gripper_state = GripperState.OPEN
@@ -48,6 +52,14 @@ class PandaRosInterface(BaseRobotInterface):
 
     def get_tcp_pose(self):
         return pos_orn_to_matrix(self.robot.ee_pose())
+
+    def move_cart_pos_abs_ptp(self, target_pos, target_orn):
+        if len(target_orn) == 3:
+            target_orn = euler_to_quat(target_orn)
+        j_des = self._inverse_kinematics(target_pos, target_orn)
+        print(target_pos, target_orn)
+        print(j_des)
+        self.robot.move_to_joint_position(j_des)
 
     def move_async_cart_pos_abs_ptp(self, target_pos, target_orn):
         if len(target_orn) == 3:

@@ -42,6 +42,14 @@ class BaseRobotInterface:
         """
         raise NotImplementedError
 
+    def move_cart_pos_abs_ptp(self, target_pos, target_orn):
+        """
+        Move robot to absolute cartesian pose with a PTP motion, blocking
+        :param target_pos: (x,y,z)
+        :param target_orn: quaternion (x,y,z,w) | euler_angles (x,y,z)
+        """
+        raise NotImplementedError
+
     def move_async_cart_pos_abs_ptp(self, target_pos, target_orn):
         """
         Move robot to absolute cartesian pose with a PTP motion, non blocking

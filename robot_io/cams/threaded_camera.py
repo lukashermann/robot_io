@@ -29,6 +29,9 @@ class ThreadedCamera:
     def get_camera_matrix(self):
         return self._camera_thread.camera.get_camera_matrix()
 
+    def get_dist_coeffs(self):
+        return self._camera_thread.camera.get_dist_coeffs()
+
     def compute_pointcloud(self, depth_img):
         return self._camera_thread.camera.compute_pointcloud(depth_img)
 

@@ -1,0 +1,15 @@
+save_dir: ../calibration/calibration_files
+num_poses: 10
+
+hydra:
+  run:
+    dir: ${save_dir}
+
+defaults:
+  - env: env
+  - robot: panda_ros_interface
+  - cams/gripper_cam@cam: framos
+  - calibration/marker_detector@marker_detector: aruco
+  - calibration/gripper_cam_pose_sampler@gripper_cam_pose_sampler: panda_sampler
+  - override hydra/job_logging: colorlog
+  - override hydra/hydra_logging: colorlog
