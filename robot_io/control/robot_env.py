@@ -4,9 +4,6 @@ import numpy as np
 
 import gym
 
-from robot_io.cams.framos.framos_d435e import FramosD435e
-from robot_io.cams.kinect4.kinect4_threading import Kinect4
-
 
 class RobotEnv(gym.Env):
     def __init__(self,

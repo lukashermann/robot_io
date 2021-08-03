@@ -1,18 +1,26 @@
 import cv2
 import hydra
 
+from robot_io.cams.threaded_camera import ThreadedCamera
+
 
 class CameraManager:
     """
     Class for handling different cameras
     """
-    def __init__(self, use_gripper_cam, use_static_cam, gripper_cam, static_cam):
+    def __init__(self, use_gripper_cam, use_static_cam, gripper_cam, static_cam, threaded_cameras):
         self.gripper_cam = None
         self.static_cam = None
         if use_gripper_cam:
-            self.gripper_cam = hydra.utils.instantiate(gripper_cam)
+            if threaded_cameras:
+                self.gripper_cam = ThreadedCamera(gripper_cam)
+            else:
+                self.gripper_cam = hydra.utils.instantiate(gripper_cam)
         if use_static_cam:
-            self.static_cam = hydra.utils.instantiate(static_cam)
+            if threaded_cameras:
+                self.static_cam = ThreadedCamera(static_cam)
+            else:
+                self.static_cam = hydra.utils.instantiate(static_cam)
         self.obs = None
 
     def get_images(self):
