@@ -1,9 +1,12 @@
+import cv2
 import numpy as np
 from numpy import dot, eye, zeros, outer
 from numpy.linalg import inv
 import itertools
+from datetime import datetime
 from scipy.optimize import least_squares
-from robot_io.utils.utils import pos_orn_to_matrix
+from robot_io.utils.utils import pos_orn_to_matrix, matrix_to_pos_orn
+from scipy.spatial.transform.rotation import Rotation as R
 
 
 def pprint(arr):
@@ -17,12 +20,12 @@ def log(R):
 
 
 def invsqrt(mat):
-    u,s,v = np.linalg.svd(mat)
+    u, s, v = np.linalg.svd(mat)
     return u.dot(np.diag(1.0/np.sqrt(s))).dot(v)
 
 
 def calibrate(A, B):
-    #transform pairs A_i, B_i
+    # transform pairs A_i, B_i
     N = len(A)
     M = np.zeros((3,3))
     for i in range(N):
@@ -46,10 +49,10 @@ def calibrate(A, B):
     return X
 
 
-def calibrate_gripper_cam_peak_martin(tcp_poses, marker_poses):
+def calibrate_gripper_cam_peak_martin(T_robot_tcp_list, T_cam_marker_list):
     ECs = []
-    for T_R_TCP, T_CAM_MARKER in zip(tcp_poses, marker_poses):
-        ECs.append((np.linalg.inv(T_R_TCP), T_CAM_MARKER))
+    for T_robot_tcp, t_cam_marker in zip(T_robot_tcp_list, T_cam_marker_list):
+        ECs.append((np.linalg.inv(T_robot_tcp), t_cam_marker))
 
     As = []  # relative EEs
     Bs = []  # relative cams
@@ -76,15 +79,64 @@ def compute_residuals_gripper_cam(x, T_robot_tcp, T_cam_marker):
 
     residuals = []
     for i in range(len(T_cam_marker)):
-        m_C_observed = T_cam_marker[i, :3, 3]
+        m_C_observed = T_cam_marker[i][:3, 3]
         m_C = T_cam_tcp @ np.linalg.inv(T_robot_tcp[i]) @ m_R
         residuals += list(m_C_observed - m_C[:3])
     return residuals
 
 
 def calibrate_gripper_cam_least_squares(T_robot_tcp, T_cam_marker):
-
     initial_guess = np.array([0, 0, 0, 0, 0, 0, 0, 0, -0.1])
     result = least_squares(fun=compute_residuals_gripper_cam, x0=initial_guess, method='lm',
                            args=(T_robot_tcp, T_cam_marker))
+    trans = result.x[3:6]
+    rot = result.x[0:3]
+    T_cam_tcp = pos_orn_to_matrix(trans, rot)
+    T_tcp_cam = np.linalg.inv(T_cam_tcp)
+    return T_tcp_cam
+
+
+def visualize_calibration_gripper_cam(cam, T_tcp_cam):
+    T_cam_tcp = np.linalg.inv(T_tcp_cam)
+
+    left_finger = np.array([0, 0.04, 0, 1])
+    right_finger = np.array([0, -0.04, 0, 1])
+    tcp = np.array([0, 0, 0, 1])
+    x = np.array([0.03, 0, 0, 1])
+    y = np.array([0, 0.03, 0, 1])
+    z = np.array([0, 0, 0.03, 1])
+
+    left_finger_cam = T_cam_tcp @ left_finger
+    right_finger_cam = T_cam_tcp @ right_finger
+    tcp_cam = T_cam_tcp @ tcp
+    x_cam = T_cam_tcp @ x
+    y_cam = T_cam_tcp @ y
+    z_cam = T_cam_tcp @ z
+
+    rgb, _ = cam.get_image()
+    cv2.circle(rgb, cam.project(left_finger_cam), radius=4, color=(255, 0, 0), thickness=3)
+    cv2.circle(rgb, cam.project(right_finger_cam), radius=4, color=(0, 255, 0), thickness=3)
+
+    cv2.line(rgb, cam.project(tcp_cam), cam.project(x_cam), color=(255,0,0), thickness=3)
+    cv2.line(rgb, cam.project(tcp_cam), cam.project(y_cam), color=(0, 255, 0), thickness=3)
+    cv2.line(rgb, cam.project(tcp_cam), cam.project(z_cam), color=(0,0, 255), thickness=3)
+
+    cv2.imshow("calibration", rgb[:, :, ::-1])
+    cv2.waitKey(0)
+
+
+def save_calibration(robot_name, cam_name, frame_from, frame_to, data):
+    now = datetime.now()
+    file_name = f"{robot_name}_{cam_name}_T_{frame_to}_{frame_from}_{now.strftime('%Y_%m_%d__%H_%M')}.npy"
+    np.save(file_name, data)
+    print(f"saved calibration to {file_name}")
+
+
+def calculate_error(T_tcp_cam, T_robot_tcp_list, T_cam_marker_list):
+    result = []
+    for T_robot_tcp, T_cam_marker in zip(T_robot_tcp_list, T_cam_marker_list):
+        T_robot_marker = T_robot_tcp @ T_tcp_cam @ T_cam_marker
+        pos, orn = matrix_to_pos_orn(T_robot_marker)
+        result.append(pos)
+    print(np.std(result, axis=0))
     return result

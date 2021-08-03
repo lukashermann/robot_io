@@ -1,5 +1,7 @@
 save_dir: ../calibration/calibration_files
-num_poses: 10
+num_poses: 20
+robot:
+  use_impedance: false
 
 hydra:
   run:
@@ -13,3 +15,4 @@ defaults:
   - calibration/gripper_cam_pose_sampler@gripper_cam_pose_sampler: panda_sampler
   - override hydra/job_logging: colorlog
   - override hydra/hydra_logging: colorlog
+

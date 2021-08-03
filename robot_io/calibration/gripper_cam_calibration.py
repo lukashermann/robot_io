@@ -5,7 +5,9 @@ import hydra
 import numpy as np
 
 from robot_io.utils.utils import quat_to_euler, euler_to_quat
-from robot_io.calibration.calibration import calibrate_gripper_cam_least_squares
+from robot_io.calibration.calibration import calibrate_gripper_cam_least_squares, visualize_calibration_gripper_cam, \
+    calculate_error
+from robot_io.calibration.calibration import save_calibration, calibrate_gripper_cam_peak_martin
 
 
 class GripperCamPoseSampler:
@@ -61,9 +63,8 @@ def record_gripper_cam_trajectory(robot, marker_detector, cfg):
     while i < cfg.num_poses:
         pos, orn = pose_sampler.sample_pose()
         robot.move_cart_pos_abs_ptp(pos, orn)
-        time.sleep(0.5)
+        time.sleep(0.3)
         detected, marker_pose = marker_detector.estimate_pose_for_marker_id(11)
-        print(f"marker detected: {detected}")
         if detected:
             tcp_poses.append(robot.get_tcp_pose())
             marker_poses.append(marker_pose)
@@ -78,8 +79,16 @@ def main(cfg):
     marker_detector = hydra.utils.instantiate(cfg.marker_detector, cam=cam)
     robot = hydra.utils.instantiate(cfg.robot)
     tcp_poses, marker_poses = record_gripper_cam_trajectory(robot, marker_detector, cfg)
+    # np.savez("data.npz", tcp_poses=tcp_poses, marker_poses=marker_poses)
+    # data = np.load("data.npz")
+    # tcp_poses = list(data["tcp_poses"])
+    # marker_poses = list(data["marker_poses"])
     T_tcp_cam = calibrate_gripper_cam_least_squares(tcp_poses, marker_poses)
-    print(T_tcp_cam)
+
+    visualize_calibration_gripper_cam(cam, T_tcp_cam)
+    calculate_error(T_tcp_cam, tcp_poses, marker_poses)
+
+    save_calibration(robot.name, cam.name, "cam", "tcp", T_tcp_cam)
 
 
 if __name__ == "__main__":

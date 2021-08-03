@@ -111,4 +111,4 @@ if __name__ == "__main__":
     cam = Realsense()
     marker_detector = MarkerDetector(cam, marker_size=0.1, marker_dict=aruco.DICT_4X4_1000)
     while True:
-        marker_detector.estimate_pose_for_marker_id(11)
+        print(marker_detector.estimate_pose_for_marker_id(11))

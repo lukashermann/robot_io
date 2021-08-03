@@ -48,8 +48,16 @@ class Camera:
                 X = np.concatenate([X, np.ones((1, X.shape[1]))], axis=0)
 
         x = self.get_projection_matrix() @ X
-        return x[0:2] / x[2]
+        result = np.round(x[0:2] / x[2]).astype(int)
+        # width, height = self.get_intrinsics()['width'], self.get_intrinsics()['height']
+        # if not (0 <= result[0] < width and 0 <= result[1] < height):
+        #     print("Projected point outside of image bounds")
+        #     raise ValueError
+        return result[0], result[1]
 
+    @staticmethod
+    def draw_point(img, point, color=(255, 0, 0)):
+        img[point[1], point[0]] = color
 
 def select_roi(cam):
     resolution = (200, 150)

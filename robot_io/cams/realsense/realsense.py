@@ -11,10 +11,18 @@ from robot_io.cams.camera import Camera
 
 class Realsense(Camera):
     """
-    Interface class to get data from Framos camera.
+    Interface class to get data from realsense camera (e.g. framos d435e).
     """
 
-    def __init__(self, fps=30, img_type="rgb", resolution=(640, 480), resize_resolution=None, crop_coords=None, params=None):
+    def __init__(self,
+                 fps=30,
+                 img_type="rgb",
+                 resolution=(640, 480),
+                 resize_resolution=None,
+                 crop_coords=None,
+                 params=None,
+                 name=None):
+        self.name = name
         super().__init__()
         assert img_type in ['rgb', "rgb_depth"]
         self.img_type = img_type
@@ -85,18 +93,17 @@ class Realsense(Camera):
         intr = color_profile.get_intrinsics()
         intr_rgb = dict(width=intr.width, height=intr.height, fx=intr.fx, fy=intr.fy,
                         cx=intr.ppx, cy=intr.ppy)
-        intrinsics = {'rgb': intr_rgb}
-        return intrinsics
+        return intr_rgb
 
     def get_projection_matrix(self):
-        intr = self.get_intrinsics()['rgb']
+        intr = self.get_intrinsics()
         cam_mat = np.array([[intr['fx'], 0, intr['cx'], 0],
                             [0, intr['fy'], intr['cy'], 0],
                             [0, 0, 1, 0]])
         return cam_mat
 
     def get_camera_matrix(self):
-        intr = self.get_intrinsics()['rgb']
+        intr = self.get_intrinsics()
         cam_mat = np.array([[intr['fx'], 0, intr['cx']],
                             [0, intr['fy'], intr['cy']],
                             [0, 0, 1]])

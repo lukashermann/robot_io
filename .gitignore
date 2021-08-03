@@ -1,3 +1,4 @@
 *__pycache__
 *.egg-info
 .idea
+robot_io/calibration/calibration_files/*

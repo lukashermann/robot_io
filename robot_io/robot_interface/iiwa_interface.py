@@ -41,6 +41,7 @@ class IIWAInterface(BaseRobotInterface):
         :param cartesian_acc: max translational and rotational acceleration of EE, in mm/s**2, for LIN motions
         :param workspace_limits: Cartesian limits of TCP position, [x_min, x_max, y_min, y_max, z_min, z_max], in meter
         """
+        self.name = "iiwa"
         self.address = (host, port + 500)
         self.other_address = (host, port)
         self.version_counter = 1

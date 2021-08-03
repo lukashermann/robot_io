@@ -18,7 +18,8 @@ class PandaRosInterface(BaseRobotInterface):
                  d_gains,
                  ik_solver,
                  rest_pose,
-                 workspace_limits):
+                 workspace_limits,
+                 use_impedance):
         """
         :param force_threshold: list of len 6 or scalar (gets repeated for all values)
         :param torque_threshold: list of len 7 or scalar (gets repeated for all values)
@@ -26,13 +27,15 @@ class PandaRosInterface(BaseRobotInterface):
         :param d_gains: joint impedance d_gains
         :param ik_solver: kdl or ik_fast
         :param rest_pose: joint_positions for null space (only for ik_fast)
+        :param use_impedance: use joint impedance control
         """
+        self.name = "panda"
         rospy.init_node("PandaRosInterface")
         self.robot = PandaArm()
         self.gripper = self.robot.get_gripper()
         self.gripper_state = GripperState.OPEN
         self.set_collision_threshold(force_threshold, torque_threshold)
-        self.activate_impedance_controller(k_gains, d_gains)
+        self.activate_controller(use_impedance, k_gains, d_gains)
         self.prev_j_des = self.robot._neutral_pose_joints
         self.ik_solver = ik_solver
         if ik_solver == 'ik_fast':
@@ -51,7 +54,7 @@ class PandaRosInterface(BaseRobotInterface):
         return pos, np_quat_to_scipy_quat(orn)
 
     def get_tcp_pose(self):
-        return pos_orn_to_matrix(self.robot.ee_pose())
+        return pos_orn_to_matrix(*self.robot.ee_pose())
 
     def move_cart_pos_abs_ptp(self, target_pos, target_orn):
         if len(target_orn) == 3:
@@ -104,38 +107,45 @@ class PandaRosInterface(BaseRobotInterface):
             assert len(torque_threshold) == 7
         self.robot.set_collision_threshold(joint_torques=torque_threshold, cartesian_forces=force_threshold)
 
-    def activate_impedance_controller(self, k_gains, d_gains):
+    def activate_controller(self, use_impedance, k_gains, d_gains):
         """
         Activate joint impedance controller.
+        :param use_impedance: use joint impedance control
         :param k_gains: List of len 7 or scalar, which is interpreted as a scaling factor for default k_gains
         :param d_gains: List of len 7 or scalar, which is interpreted as a scaling factor for default k_gains
         """
         cm = self.robot.get_controller_manager()
-        if not cm.is_running("franka_ros_interface/effort_joint_impedance_controller"):
-            cm.stop_controller(cm.current_controller)
-            cm.start_controller("franka_ros_interface/effort_joint_impedance_controller")
+        if not use_impedance:
+            controller_name = "franka_ros_interface/position_joint_position_controller"
+        else:
+            controller_name = "franka_ros_interface/effort_joint_impedance_controller"
+        if not cm.is_running(controller_name):
+            if cm.current_controller is not None:
+                cm.stop_controller(cm.current_controller)
+            cm.start_controller(controller_name)
         time.sleep(1)
 
-        default_k_gains = np.array([1200.0, 1000.0, 1000.0, 800.0, 300.0, 200.0, 50.0])
-        default_d_gains = np.array([50.0, 50.0, 50.0, 20.0, 20.0, 20.0, 10.0])
+        if use_impedance:
+            default_k_gains = np.array([1200.0, 1000.0, 1000.0, 800.0, 300.0, 200.0, 50.0])
+            default_d_gains = np.array([50.0, 50.0, 50.0, 20.0, 20.0, 20.0, 10.0])
 
-        if isinstance(k_gains, (float, int)):
-            assert 0.2 < k_gains <= 1
-            k_gains = list(default_k_gains * k_gains)
-        elif k_gains is None:
-            k_gains = list(default_k_gains)
+            if isinstance(k_gains, (float, int)):
+                assert 0.2 < k_gains <= 1
+                k_gains = list(default_k_gains * k_gains)
+            elif k_gains is None:
+                k_gains = list(default_k_gains)
 
-        if isinstance(d_gains, (float, int)):
-            assert 0.5 <= d_gains <= 1
-            d_gains = list(default_d_gains * d_gains)
-        elif d_gains is None:
-            d_gains = list(default_d_gains)
+            if isinstance(d_gains, (float, int)):
+                assert 0.5 <= d_gains <= 1
+                d_gains = list(default_d_gains * d_gains)
+            elif d_gains is None:
+                d_gains = list(default_d_gains)
 
-        assert len(k_gains) == 7
-        assert len(d_gains) == 7
+            assert len(k_gains) == 7
+            assert len(d_gains) == 7
 
-        ctrl_cfg_client = cm.get_current_controller_config_client()
-        ctrl_cfg_client.set_controller_gains(k_gains, d_gains)
+            ctrl_cfg_client = cm.get_current_controller_config_client()
+            ctrl_cfg_client.set_controller_gains(k_gains, d_gains)
 
     def _inverse_kinematics(self, target_pos, target_orn):
         """

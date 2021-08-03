@@ -1,7 +1,7 @@
 import math
 import sys
 import time
-
+import quaternion
 import hydra
 import numpy as np
 import multiprocessing as mp
@@ -62,7 +62,7 @@ def matrix_to_pos_orn(mat):
     :param mat: 4x4 homogeneous transformation
     :return: tuple(position: np.array of shape (3,), orientation: np.array of shape (4,) -> quaternion xyzw)
     """
-    orn = scipy_quat_to_np_quat(R.from_matrix(mat[:3, :3]).as_quat())
+    orn = R.from_matrix(mat[:3, :3]).as_quat()
     pos = mat[:3, 3]
     return pos, orn
 

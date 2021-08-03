@@ -21,6 +21,7 @@ class Kinect4(Camera):
                  resize_resolution=None,
                  crop_coords=None,
                  fps=30):
+        self.name = "azure_kinect"
         super().__init__()
         data = np.load((Path(__file__).parent / params_file_path).as_posix(), allow_pickle=True)
         if config_path is not None:
