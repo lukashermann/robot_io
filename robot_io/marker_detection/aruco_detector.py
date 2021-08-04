@@ -1,23 +1,26 @@
+import hydra.utils
 import numpy as np
 import cv2
 import cv2.aruco as aruco
+from omegaconf import OmegaConf
 from scipy.spatial.transform import Rotation as R
-import hydra
 
 FONT = cv2.FONT_HERSHEY_SIMPLEX
 
 
-class MarkerDetector:
+class ArucoDetector:
     def __init__(self,
                  cam,
                  marker_size,
                  marker_dict,
+                 marker_id,
                  visualize=True):
         self.cam = cam
         self.marker_size = marker_size
         self.visualize = visualize
         self.camera_matrix = self.cam.get_camera_matrix()
         self.marker_dict = eval(marker_dict) if isinstance(marker_dict, str) else marker_dict
+        self.marker_id = marker_id
         self.dist_coeffs = self.cam.get_dist_coeffs()
 
     def detect_markers(self, rgb):
@@ -64,8 +67,11 @@ class MarkerDetector:
         cv2.imshow("win2", rgb[:, :, ::-1])
         cv2.waitKey(1)
 
-    def estimate_pose_for_marker_id(self, marker_id):
-        rgb, depth = self.cam.get_image()
+    def estimate_pose(self, rgb=None, marker_id=None):
+        if marker_id is None:
+            marker_id = self.marker_id
+        if rgb is None:
+            rgb, _ = self.cam.get_image()
         detected_markers = self.detect_markers(rgb)
 
         if len(detected_markers) == 0 or marker_id not in detected_markers:
@@ -76,7 +82,7 @@ class MarkerDetector:
                 cv2.imshow("win2", rgb[:, :, ::-1])
                 cv2.waitKey(1)
 
-            return False, None
+            return None
 
         corners = detected_markers[marker_id]
         # estimate pose of each marker and return the values
@@ -94,14 +100,14 @@ class MarkerDetector:
             cv2.putText(rgb, f"Id: {marker_id}" , (0, 64), FONT, 1, (0, 255, 0), 2, cv2.LINE_AA)
             print(f"marker detected with marker_id {marker_id}")
             #
-            cv2.imshow("win2", rgb[:,:,::-1])
+            cv2.imshow("win2", rgb[:, :, ::-1])
             cv2.waitKey(1)
 
         r = R.from_rotvec(rvec[0])
-        dcm = np.eye(4)
-        dcm[:3, 3] = tvec
-        dcm[:3, :3] = r.as_matrix()
-        return True, dcm
+        T_cam_marker = np.eye(4)
+        T_cam_marker[:3, 3] = tvec
+        T_cam_marker[:3, :3] = r.as_matrix()
+        return T_cam_marker
 
 
 if __name__ == "__main__":
@@ -109,6 +115,8 @@ if __name__ == "__main__":
     # cam = Kinect4()
     from robot_io.cams.realsense.realsense import Realsense
     cam = Realsense()
-    marker_detector = MarkerDetector(cam, marker_size=0.1, marker_dict=aruco.DICT_4X4_1000)
+    cfg = OmegaConf.load("../conf/marker_detector/aruco.yaml")
+    marker_detector = hydra.utils.instantiate(cfg, cam=cam)
+
     while True:
-        print(marker_detector.estimate_pose_for_marker_id(11))
+        print(marker_detector.estimate_pose())

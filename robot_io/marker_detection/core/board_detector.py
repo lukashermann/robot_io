@@ -1,8 +1,8 @@
-import numpy as np
 import cv2
 
-from ..TagDetector.AprilTagDetectorBatch import *
-from ..utils.general_util import json_load
+from robot_io.marker_detection.apriltag_detection.AprilTagDetectorBatch import *
+from robot_io.marker_detection.utils.general_util import json_load
+
 
 class BoardDetector(object):
     """ Detects a predefined Apriltag-based calibration board in images.

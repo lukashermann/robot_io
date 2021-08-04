@@ -2,3 +2,6 @@
 *.egg-info
 .idea
 robot_io/calibration/calibration_files/*
+robot_io/marker_detection/apriltag_detection/build/*
+robot_io/marker_detection/apriltag_detection/AprilTagDetectorBatch.cpython-38-x86_64-linux-gnu.so
+robot_io/marker_detection/apriltag_detection/AprilTagDetectorBatch.cpp

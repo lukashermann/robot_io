@@ -5,3 +5,6 @@ scipy
 gym
 numba
 spnav
+hydra-core
+hydra-colorlog
+opencv-python

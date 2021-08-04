@@ -3,7 +3,10 @@ import cv2
 
 
 class TagPoseEstimator(object):
-    """ Calculates the 3D coordinates of the visible keypoints of a AprilTag based calibration board using a OpenCV PnP algorithm. """
+    """
+    Calculates the 3D coordinates of the visible keypoints of a AprilTag based calibration board using a OpenCV
+    PnP algorithm.
+    """
     def __init__(self, board, verbose=False):
         self.board = board
         self.verbose = verbose
@@ -18,7 +21,7 @@ class TagPoseEstimator(object):
 
         camera_dist = np.squeeze(np.array(camera_dist))
         assert len(camera_dist.shape) == 1, "camera_dist shape mismatch. Should be of length 4 or 5."
-        assert (camera_dist.shape[0] == 4) or (camera_dist.shape[0] == 5), "camera_dist shape mismatch. Should be of length 4 or 5."
+        assert (camera_dist.shape[0] in [4, 5, 8, 12, 14])
 
         assert len(points2d_cam.shape) == 2, "points2d_cam0 shape mismatch. Should be Nx2"
         assert points2d_cam.shape[0] >= 4, "points2d_cam0 shape mismatch. Should be Nx2, with N>4"

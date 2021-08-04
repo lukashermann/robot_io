@@ -12,8 +12,8 @@ CPP_FILES =['./library/src/FloatImage.cc', './library/src/TagDetection.cc', './l
 CPP_FILES.append('AprilTagDetectorBatch.pyx')
 ext = Extension('AprilTagDetectorBatch',
                 sources=[os.path.abspath(x) for x in CPP_FILES],
-                libraries=['opencv_highgui', 'opencv_core', 'opencv_calib3d', 'pthread'],
-                include_dirs=[os.path.abspath('./library/include/'), numpy.get_include(), '/usr/local/include/opencv4/'],
+                libraries=['opencv_highgui', 'opencv_core', 'opencv_calib3d', 'pthread', 'opencv_imgcodecs', 'opencv_imgproc'],
+                include_dirs=[os.path.abspath('./library/include/'), numpy.get_include(), '/usr/include/opencv4/', '/usr/local/include/opencv4/'],
                 extra_compile_args=['-std=c++11']
                 )
 
