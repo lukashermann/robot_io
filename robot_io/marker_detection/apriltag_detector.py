@@ -29,7 +29,7 @@ class ApriltagDetector:
         points2d, point_ids = self.detector.process_image_m(rgb)
 
         T_cam_marker = self._estimate_pose(points2d, point_ids)
-        if visualize:
+        if visualize and T_cam_marker is not None:
             self.detector.draw_board(rgb, points2d, point_ids, show=False, linewidth=1)
             aruco.drawAxis(rgb, self.K, self.dist_coeffs, T_cam_marker[:3, :3], T_cam_marker[:3, 3], 0.1)
             cv2.imshow("window", rgb[:, :, ::-1])

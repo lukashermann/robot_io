@@ -82,6 +82,11 @@ class IIWAInterface(BaseRobotInterface):
         orn = euler_to_quat(orn)
         return pos, orn
 
+    def move_cart_pos_abs_ptp(self, target_pos, target_orn):
+        self.move_async_cart_pos_abs_ptp(target_pos, target_orn)
+        while not self.reached_position(target_pos, target_orn):
+            time.sleep(0.1)
+
     def move_async_cart_pos_abs_ptp(self, target_pos, target_orn):
         pose = self._process_pose(target_pos, target_orn)
         msg = self._create_robot_msg(pose, JAVA_CARTESIAN_MODE_ABS_PTP)
