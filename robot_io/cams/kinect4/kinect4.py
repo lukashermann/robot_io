@@ -8,7 +8,6 @@ import threading
 from pathlib import Path
 
 from robot_io.cams.camera import Camera
-from robot_io.utils.utils import FpsController, timeit
 
 
 class Kinect4(Camera):
@@ -22,14 +21,8 @@ class Kinect4(Camera):
                  crop_coords=None,
                  fps=30):
         self.name = "azure_kinect"
-        super().__init__()
-        data = np.load((Path(__file__).parent / params_file_path).as_posix(), allow_pickle=True)
-        if config_path is not None:
-            full_path = (Path(__file__).parent / config_path).as_posix()
-            config = o3d.io.read_azure_kinect_sensor_config(full_path)
-        else:
-            config = o3d.io.AzureKinectSensorConfig()
-
+        resolution, config, data = self.load_config(config_path, params_file_path)
+        super().__init__(resolution=resolution, crop_coords=crop_coords, resize_resolution=resize_resolution)
         self.dist_coeffs = data['dist_coeffs']
         self.camera_matrix = data['camera_matrix']
         self.projection_matrix = data['projection_matrix']
@@ -40,14 +33,27 @@ class Kinect4(Camera):
         self.align_depth_to_color = align_depth_to_color
         self.config_path = config_path
         self.undistort_image = undistort_image
-        self.resize_resolution = resize_resolution
-        self.crop_coords = crop_coords
         self.fps = fps
 
         self.align_depth_to_color = align_depth_to_color
         self.sensor = o3d.io.AzureKinectSensor(config)
         if not self.sensor.connect(device):
             raise RuntimeError('Failed to connect to sensor')
+
+    def load_config(self, config_path, params_file_path):
+        data = np.load((Path(__file__).parent / params_file_path).as_posix(), allow_pickle=True)
+        if config_path is not None:
+            full_path = (Path(__file__).parent / config_path).as_posix()
+            config = o3d.io.read_azure_kinect_sensor_config(full_path)
+        else:
+            config = o3d.io.AzureKinectSensorConfig()
+        if "1080" in params_file_path:
+            resolution = (1920, 1080)
+        elif "720" in params_file_path:
+            resolution = (1280, 720)
+        else:
+            raise ValueError
+        return resolution, config, data
 
     def get_intrinsics(self):
         return self.intrinsics
@@ -74,43 +80,6 @@ class Kinect4(Camera):
         return rgb, depth
 
 
-def select_roi():
-    cam = Kinect4(0)
-    resolution = (200, 150)
-    while True:
-        for i in range(10):
-            rgb, depth = cam.get_image()
-            cv2.imshow("rgb", rgb[:, :, ::-1])
-            cv2.imshow("depth", depth)
-            cv2.waitKey(1)
-        r = cv2.selectROI("rgb", rgb[:, :, ::-1])
-        x, y = int(r[0]), int(r[1])
-        width, height = int(r[2]), int(r[3])
-        center = (x + width // 2, y + height // 2)
-        ratio = resolution[0] / resolution[1]
-        if width / height > ratio:
-            height = width / ratio
-        else:
-            width = height * ratio
-        height = int(np.round(height))
-        width = int(np.round(width))
-
-        mask = np.zeros_like(depth)
-        mask[center[1] - height // 2: center[1] + height // 2, center[0] - width // 2: center[0] + width // 2] = 1
-        rgb[np.where(mask == 0)] = 0
-        depth[np.where(mask == 0)] = 0
-
-        cv2.imshow("rgb", rgb[:, :, ::-1])
-        cv2.imshow("depth", depth)
-        print("Press ENTER to finish selection, press c button to redo.")
-        k = cv2.waitKey(0) % 256
-        if k == 13:
-            print("Image coordinates: ", center[1] - height // 2, center[1] + height // 2, center[0] - width // 2, center[0] + width // 2)
-            return
-        else:
-            continue
-
-
 def test_camera():
     # cam = Kinect4(0, crop_coords=(301, 623, 516, 946), resize_resolution=(200, 150))
     cam = Kinect4(0)
@@ -122,5 +91,4 @@ def test_camera():
 
 
 if __name__ == "__main__":
-    # select_roi()
     test_camera()

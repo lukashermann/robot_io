@@ -1,0 +1,7 @@
+setuptools
+numpy
+open3d
+scipy
+gym
+numba
+spnav

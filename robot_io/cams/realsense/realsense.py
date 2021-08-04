@@ -21,14 +21,11 @@ class Realsense(Camera):
                  resize_resolution=None,
                  crop_coords=None,
                  params=None,
-                 name=None):
+                 name=None,):
         self.name = name
-        super().__init__()
         assert img_type in ['rgb', "rgb_depth"]
         self.img_type = img_type
-        self.resolution = resolution
-        self.resize_resolution = resize_resolution
-        self.crop_coords = crop_coords
+        super().__init__(resolution=resolution, crop_coords=crop_coords, resize_resolution=resize_resolution)
 
         # Configure depth and color streams
         self.pipeline = rs.pipeline()
@@ -117,15 +114,20 @@ def test_cam():
     # Import OpenCV for easy image rendering
     import cv2
     cam = Realsense(img_type='rgb_depth')
+    rgb, depth = cam.get_image()
     while 1:
         rgb, depth = cam.get_image()
+
+        pc = cam.compute_pointcloud(depth, rgb)
+        cam.view_pointcloud(pc)
         cv2.imshow("rgb", rgb[:, :, ::-1])
         # depth *= (255 / 4)
         # depth = np.clip(depth, 0, 255)
         # depth = depth.astype(np.uint8)
         # depth = cv2.applyColorMap(depth, cv2.COLORMAP_JET)
-        # cv2.imshow("depth", depth)
+        cv2.imshow("depth", depth)
         cv2.waitKey(1)
+
 
 
 if __name__ == "__main__":

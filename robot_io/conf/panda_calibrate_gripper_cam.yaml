@@ -1,5 +1,6 @@
 save_dir: ../calibration/calibration_files
 num_poses: 20
+marker_id: 11
 robot:
   use_impedance: false
 

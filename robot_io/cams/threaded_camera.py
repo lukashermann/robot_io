@@ -35,6 +35,13 @@ class ThreadedCamera:
     def compute_pointcloud(self, depth_img):
         return self._camera_thread.camera.compute_pointcloud(depth_img)
 
+    def revert_crop_and_resize(self, img):
+        return self._camera_thread.camera.revert_crop_and_resize(img)
+
+    def __del__(self):
+        self._camera_thread.flag_exit = True
+        self._camera_thread.join()
+
 
 class _CameraThread(threading.Thread):
     def __init__(self, camera_cfg):
@@ -60,6 +67,7 @@ if __name__ == "__main__":
     print(cam.get_intrinsics())
     while True:
         rgb, depth = cam.get_image()
+        depth = cam.revert_crop_and_resize(depth)
         cv2.imshow("depth", depth)
         cv2.imshow("rgb", rgb[:, :, ::-1])
         cv2.waitKey(1)
