@@ -76,8 +76,8 @@ def record_gripper_cam_trajectory(robot, marker_detector, cfg):
         pos, orn = pose_sampler.sample_pose()
         robot.move_cart_pos_abs_ptp(pos, orn)
         time.sleep(0.3)
-        detected, marker_pose = marker_detector.estimate_pose_for_marker_id(cfg.marker_id)
-        if detected:
+        marker_pose = marker_detector.estimate_pose()
+        if marker_pose is not None:
             tcp_poses.append(robot.get_tcp_pose())
             marker_poses.append(marker_pose)
             i += 1

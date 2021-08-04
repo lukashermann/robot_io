@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from omegaconf import OmegaConf
 
 import cv2
@@ -13,6 +15,7 @@ class ApriltagDetector:
     def __init__(self, cam, marker_description, min_tags):
         # set up detector and estimator
         self.cam = cam
+        marker_description = (Path(__file__).parent / marker_description).as_posix()
         self.detector = BoardDetector(marker_description)
         self.min_tags = min_tags
         self.estimator = TagPoseEstimator(self.detector)

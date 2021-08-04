@@ -11,8 +11,8 @@ hydra:
 defaults:
   - env: env
   - robot: panda_ros_interface
-  - cams/gripper_cam@cam: framos
-  - calibration/marker_detector@marker_detector: aruco
+  - cams/gripper_cam@cam: framos_highres
+  - marker_detector: apriltag_board
   - calibration/gripper_cam_pose_sampler@gripper_cam_pose_sampler: panda_sampler
   - override hydra/job_logging: colorlog
   - override hydra/hydra_logging: colorlog
