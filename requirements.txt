@@ -9,3 +9,4 @@ hydra-core
 hydra-colorlog
 opencv-python
 digit-interface
+numpy-quaternion

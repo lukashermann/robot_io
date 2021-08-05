@@ -1,10 +1,11 @@
 from pathlib import Path
 
+import hydra.utils
 from omegaconf import OmegaConf
 
 import cv2
 import numpy as np
-from cv2 import aruco
+#from cv2 import aruco
 
 from robot_io.cams.realsense.realsense import Realsense
 from robot_io.marker_detection.core.board_detector import BoardDetector
@@ -29,9 +30,12 @@ class ApriltagDetector:
         points2d, point_ids = self.detector.process_image_m(rgb)
 
         T_cam_marker = self._estimate_pose(points2d, point_ids)
-        if visualize and T_cam_marker is not None:
+        if T_cam_marker is None:
+            print("No marker detected")
+            return None
+        if visualize:
             self.detector.draw_board(rgb, points2d, point_ids, show=False, linewidth=1)
-            aruco.drawAxis(rgb, self.K, self.dist_coeffs, T_cam_marker[:3, :3], T_cam_marker[:3, 3], 0.1)
+            # aruco.drawAxis(rgb, self.K, self.dist_coeffs, T_cam_marker[:3, :3], T_cam_marker[:3, 3], 0.1)
             cv2.imshow("window", rgb[:, :, ::-1])
             cv2.waitKey(1)
         return T_cam_marker
@@ -50,9 +54,11 @@ class ApriltagDetector:
 
 
 if __name__ == '__main__':
-    cam = Realsense(img_type='rgb_depth')
+    cam_cfg = OmegaConf.load("../conf/cams/gripper_cam/realsense.yaml")
+    cam = hydra.utils.instantiate(cam_cfg)
     cfg = OmegaConf.load("../conf/marker_detector/apriltag_board.yaml")
     marker_detector = ApriltagDetector(cam, cfg.marker_description, cfg.min_tags)
+    print("entering loop")
     while True:
         marker_detector.estimate_pose()
 
