@@ -2,9 +2,11 @@
 ## Copyright(c) 2017 Intel Corporation. All Rights Reserved.
 
 # Import Numpy for easy array manipulation
+import hydra
 import numpy as np
 # Import the library
 import pyrealsense2 as rs
+from omegaconf import OmegaConf
 
 from robot_io.cams.camera import Camera
 
@@ -22,10 +24,9 @@ class Realsense(Camera):
                  crop_coords=None,
                  params=None,
                  name=None,):
-        self.name = name
         assert img_type in ['rgb', "rgb_depth"]
         self.img_type = img_type
-        super().__init__(resolution=resolution, crop_coords=crop_coords, resize_resolution=resize_resolution)
+        super().__init__(resolution=resolution, crop_coords=crop_coords, resize_resolution=resize_resolution, name=name)
 
         # Configure depth and color streams
         self.pipeline = rs.pipeline()
@@ -113,7 +114,9 @@ class Realsense(Camera):
 def test_cam():
     # Import OpenCV for easy image rendering
     import cv2
-    cam = Realsense(img_type='rgb_depth')
+    cam_cfg = OmegaConf.load("../../conf/cams/gripper_cam/realsense.yaml")
+    cam = hydra.utils.instantiate(cam_cfg)
+
     rgb, depth = cam.get_image()
     while 1:
         rgb, depth = cam.get_image()
@@ -127,7 +130,6 @@ def test_cam():
         # depth = cv2.applyColorMap(depth, cv2.COLORMAP_JET)
         cv2.imshow("depth", depth)
         cv2.waitKey(1)
-
 
 
 if __name__ == "__main__":

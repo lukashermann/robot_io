@@ -1,4 +1,7 @@
 import math
+from pathlib import Path
+
+import git
 import sys
 import time
 import quaternion
@@ -66,7 +69,9 @@ def matrix_to_pos_orn(mat):
     pos = mat[:3, 3]
     return pos, orn
 
+
 import logging
+
 log = logging.getLogger(__name__)
 
 
@@ -119,3 +124,9 @@ def timeit(method):
         return result
 
     return timed
+
+
+def get_git_root(path):
+    git_repo = git.Repo(Path(path), search_parent_directories=True)
+    git_root = git_repo.git.rev_parse("--show-toplevel")
+    return Path(git_root)

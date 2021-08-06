@@ -2,14 +2,18 @@ import cv2
 import numpy as np
 import logging
 import open3d as o3d
+
+from robot_io.utils.utils import get_git_root
+
 log = logging.getLogger(__name__)
 
 
 class Camera:
-    def __init__(self, resolution, crop_coords, resize_resolution):
+    def __init__(self, resolution, crop_coords, resize_resolution, name):
         self.resolution = resolution
         self.crop_coords = crop_coords
         self.resize_resolution = resize_resolution
+        self.name = name
 
     def get_image(self):
         rgb, depth = self._get_image()
@@ -112,6 +116,16 @@ class Camera:
     @staticmethod
     def draw_point(img, point, color=(255, 0, 0)):
         img[point[1], point[0]] = color
+
+    def get_extrinsic_calibration(self, robot_name):
+        calib_folder = get_git_root(__file__) / "robot_io/calibration/calibration_files"
+        calib_files = list(calib_folder.glob(f"{robot_name}_{self.name}*npy"))
+        if len(calib_files) == 0:
+            log.error(f"Calibration for {robot_name} and {self.name} does not exist.")
+            raise FileNotFoundError
+        newest_calib = sorted(calib_files, reverse=True)[0]
+        return np.load(newest_calib)
+
 
 
 

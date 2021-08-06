@@ -55,6 +55,7 @@ class IIWAInterface(BaseRobotInterface):
         self.neutral_pose = np.array(neutral_pose)
         self.gripper = WSG50Controller()
         self.gripper_state = GripperState.OPEN
+        self.gripper.open_gripper()
         super().__init__()
 
     def move_to_neutral(self):

@@ -65,6 +65,7 @@ class GripperCamPoseSampler:
 
 def record_gripper_cam_trajectory(robot, marker_detector, cfg):
     robot.move_to_neutral()
+    time.sleep(2)
     _, orn = robot.get_tcp_pos_orn()
     pose_sampler = hydra.utils.instantiate(cfg.gripper_cam_pose_sampler, initial_orn=orn)
 
@@ -97,10 +98,10 @@ def main(cfg):
     # marker_poses = list(data["marker_poses"])
     T_tcp_cam = calibrate_gripper_cam_least_squares(tcp_poses, marker_poses)
 
-    visualize_calibration_gripper_cam(cam, T_tcp_cam)
-    calculate_error(T_tcp_cam, tcp_poses, marker_poses)
-
     save_calibration(robot.name, cam.name, "cam", "tcp", T_tcp_cam)
+    calculate_error(T_tcp_cam, tcp_poses, marker_poses)
+    visualize_calibration_gripper_cam(cam, T_tcp_cam)
+
 
 
 if __name__ == "__main__":

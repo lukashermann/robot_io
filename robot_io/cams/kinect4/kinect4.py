@@ -20,9 +20,8 @@ class Kinect4(Camera):
                  resize_resolution=None,
                  crop_coords=None,
                  fps=30):
-        self.name = "azure_kinect"
         resolution, config, data = self.load_config(config_path, params_file_path)
-        super().__init__(resolution=resolution, crop_coords=crop_coords, resize_resolution=resize_resolution)
+        super().__init__(resolution=resolution, crop_coords=crop_coords, resize_resolution=resize_resolution, name="azure_kinect")
         self.dist_coeffs = data['dist_coeffs']
         self.camera_matrix = data['camera_matrix']
         self.projection_matrix = data['projection_matrix']

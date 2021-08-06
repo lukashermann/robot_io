@@ -7,8 +7,8 @@ resolution: [640, 480]
 #resize_resolution: [200, 200]
 #crop_coords: [0, 480, 80, 560]
 params:
-  #white_balance: 3400.0
-  #exposure: 300.0
+  white_balance: 3400.0
+  exposure: 300.0
   brightness: 50.0
   contrast: 50.0
   saturation: 64.0
@@ -16,5 +16,5 @@ params:
   gain: 64.0
   #gamma: 300.0
   #hue: 0.0
-  enable_auto_exposure: 1.0
-  enable_auto_white_balance: 1.0
+  #enable_auto_exposure: 1.0
+  #enable_auto_white_balance: 1.0
