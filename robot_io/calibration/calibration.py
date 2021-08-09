@@ -125,6 +125,52 @@ def visualize_calibration_gripper_cam(cam, T_tcp_cam):
     cv2.waitKey(0)
 
 
+def compute_residuals_static_cam(x, T_robot_tcp, T_cam_marker):
+    m_tcp = np.array([*x[6:], 1])
+    T_cam_robot = pos_orn_to_matrix(x[3:6], x[:3])
+
+    residuals = []
+    for i in range(len(T_cam_marker)):
+        m_C_observed = T_cam_marker[i][:3, 3]
+        m_C = T_cam_robot @ T_robot_tcp[i] @ m_tcp
+        residuals += list(m_C_observed - m_C[:3])
+    return residuals
+
+
+def calibrate_static_cam_least_squares(T_robot_tcp, T_cam_marker):
+    initial_guess = np.array([0, 0, 0, 0, 0, 0, 0, 0, -0.1])
+    result = least_squares(fun=compute_residuals_static_cam, x0=initial_guess, method='lm',
+                           args=(T_robot_tcp, T_cam_marker))
+    trans = result.x[3:6]
+    rot = result.x[0:3]
+    T_cam_robot = pos_orn_to_matrix(trans, rot)
+    T_robot_cam = np.linalg.inv(T_cam_robot)
+    return T_robot_cam
+
+
+def visualize_calibration_static_cam(cam, T_robot_cam):
+    T_cam_robot = np.linalg.inv(T_robot_cam)
+
+    robot = np.array([0, 0, 0, 1])
+    x = np.array([0.03, 0, 0, 1])
+    y = np.array([0, 0.03, 0, 1])
+    z = np.array([0, 0, 0.03, 1])
+
+    robot_cam = T_cam_robot @ robot
+    x_cam = T_cam_robot @ x
+    y_cam = T_cam_robot @ y
+    z_cam = T_cam_robot @ z
+
+    rgb, _ = cam.get_image()
+
+    cv2.line(rgb, cam.project(robot_cam), cam.project(x_cam), color=(255,0,0), thickness=3)
+    cv2.line(rgb, cam.project(robot_cam), cam.project(y_cam), color=(0, 255, 0), thickness=3)
+    cv2.line(rgb, cam.project(robot_cam), cam.project(z_cam), color=(0,0, 255), thickness=3)
+
+    cv2.imshow("calibration", rgb[:, :, ::-1])
+    cv2.waitKey(0)
+
+
 def save_calibration(robot_name, cam_name, frame_from, frame_to, data):
     now = datetime.now()
     file_name = f"{robot_name}_{cam_name}_T_{frame_to}_{frame_from}_{now.strftime('%Y_%m_%d__%H_%M')}.npy"

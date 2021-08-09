@@ -1,5 +1,9 @@
 # Camera Calibration
 ### Static Camera
+- Stick the marker to the robot end-effector
+- Run `python robot_io/calibration/static_cam_calibration.py --config-name=[panda_calibrate_static_cam|iiwa_calibrate_static_cam]`
+- If you set `record_traj: true`, then you should use vr controller to move the robot. Press the record button (on top) to sample poses, and hold record button to finish the pose sampling.
+- If you set `record_traj: false` and `play_traj: true`, the robot will move to the previously recorded poses and captures the marker pose. This option is helpful in case the camera is moved slightly.
 
 ### Gripper Camera
 - Place Aruco Marker in front of robot

@@ -1,0 +1,19 @@
+save_dir: ../calibration/calibration_files/iiwa_kinect4
+load_dir: /home/nematoli/robot_io/calibration/calibration_files/iiwa_kinect4
+record_traj: false
+play_traj: true
+freq: 30
+
+hydra:
+  run:
+    dir: ${save_dir}
+
+defaults:
+  - robot: iiwa_interface
+  - input: vr_input
+  - cams/static_cam@cam: kinect4_highres
+  - cams: no_cameras
+  - recorder: calib_recorder
+  - marker_detector: apriltag_board
+  - override hydra/job_logging: colorlog
+  - override hydra/hydra_logging: colorlog
