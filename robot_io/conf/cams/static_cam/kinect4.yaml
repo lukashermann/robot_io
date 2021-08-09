@@ -2,8 +2,7 @@ _target_: robot_io.cams.kinect4.kinect4.Kinect4
 _recursive_: false
 device: 0
 align_depth_to_color: true
-config_path: config/config_kinect4_1080p.json
-params_file_path: config/kinect4_params_1080p.npz
+resolution: '720p'
 undistort_image: true
 resize_resolution: [200, 150]
 crop_coords: [301, 623, 516, 946]
