@@ -100,7 +100,7 @@ class Kinect4(Camera):
         while rgbd is None:
             rgbd = self.sensor.capture_frame(self.align_depth_to_color)
         rgb = np.asarray(rgbd.color)
-        depth = (np.asarray(rgbd.depth)).astype('float') / 1000
+        depth = (np.asarray(rgbd.depth)).astype(np.float32) / 1000
         if self.undistort_image:
             rgb = cv2.remap(rgb, self.map1, self.map2, interpolation=cv2.INTER_LINEAR)
             depth = cv2.remap(depth, self.map1, self.map2, interpolation=cv2.INTER_LINEAR)

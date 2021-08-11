@@ -77,7 +77,7 @@ class Realsense(Camera):
 
         # Convert images to numpy arrays
         depth_image = np.asanyarray(depth_frame.get_data())
-        depth_image = depth_image.astype(np.float64)
+        depth_image = depth_image.astype(np.float32)
         depth_image *= self.depth_scale
         return color_image, depth_image
 

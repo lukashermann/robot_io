@@ -16,6 +16,7 @@ class Camera:
         self.name = name
 
     def get_image(self):
+        """get the the current rgb and depth image as float32 numpy arrays"""
         rgb, depth = self._get_image()
         rgb = self._crop_and_resize(rgb)
         depth = self._crop_and_resize(depth)
