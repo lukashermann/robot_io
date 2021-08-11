@@ -2,10 +2,10 @@ _target_: robot_io.robot_interface.iiwa_interface.IIWAInterface
 _recursive_: false
 host: "localhost"
 port: 50100
-use_impedance: false
-joint_vel: 0.2
-gripper_rot_vel: 0.2
-joint_acc: 0.2
+use_impedance: True
+joint_vel: 0.05
+joint_acc: 0.3
+gripper_rot_vel: 0.3
 cartesian_vel: 100
 cartesian_acc: 300
 workspace_limits: [[0.4, -0.5, 0.1], [0.7, 0.5, 0.5]]  # [[x_min, y_min, z_min], [x_max, y_max, z_max]]
