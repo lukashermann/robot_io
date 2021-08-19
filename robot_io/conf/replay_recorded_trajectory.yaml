@@ -1,4 +1,5 @@
-save_dir: /tmp/test_record
+save_dir: /tmp/
+load_dir: ???
 freq: 30
 
 hydra:
@@ -8,8 +9,6 @@ hydra:
 defaults:
   - env: env
   - robot: panda_frankx_interface
-  - input: vr_input
-  - recorder: vr_recorder
   - cams: camera_manager
   - override hydra/job_logging: colorlog
   - override hydra/hydra_logging: colorlog

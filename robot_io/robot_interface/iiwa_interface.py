@@ -1,3 +1,4 @@
+import logging
 import socket
 import time
 
@@ -6,6 +7,9 @@ from math import pi
 from robot_io.kuka_iiwa.wsg50_controller import WSG50Controller
 from robot_io.robot_interface.base_robot_interface import BaseRobotInterface, GripperState
 from robot_io.utils.utils import np_quat_to_scipy_quat, pos_orn_to_matrix, euler_to_quat, quat_to_euler
+
+import logging
+log = logging.getLogger(__name__)
 
 JAVA_JOINT_MODE = 0
 JAVA_CARTESIAN_MODE_REL_PTP = 1
@@ -119,14 +123,20 @@ class IIWAInterface(BaseRobotInterface):
         msg += np.array([JAVA_ABORT_MOTION], dtype=np.int16).tobytes()
         return self._send_recv_message(msg, 188)
 
-    def open_gripper(self):
+    def open_gripper(self, blocking=False):
         if self.gripper_state == GripperState.CLOSED:
             self.gripper.open_gripper()
+            if blocking:
+                # TODO: implement this properly
+                time.sleep(1)
             self.gripper_state = GripperState.OPEN
 
-    def close_gripper(self):
+    def close_gripper(self, blocking=False):
         if self.gripper_state == GripperState.OPEN:
             self.gripper.close_gripper()
+            if blocking:
+                # TODO: implement this properly
+                time.sleep(1)
             self.gripper_state = GripperState.CLOSED
 
     @staticmethod

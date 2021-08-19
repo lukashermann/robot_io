@@ -1,5 +1,7 @@
 import time
 import os
+from pathlib import Path
+
 import hydra
 import numpy as np
 
@@ -9,17 +11,19 @@ from robot_io.calibration.calibration import save_calibration, calculate_error
 from robot_io.utils.utils import FpsController
 
 
-def record_static_cam_trajectory(robot, marker_detector, cfg):
+def record_static_cam_trajectory(robot, marker_detector, cfg, calib_poses_dir):
 
     input_device = hydra.utils.instantiate(cfg.input, robot=robot)
     fps = FpsController(cfg.freq)
 
     robot.move_to_neutral()
+    time.sleep(5)
+    robot.close_gripper(blocking=True)
 
     tcp_poses = []
     marker_poses = []
 
-    recorder = hydra.utils.instantiate(cfg.recorder)
+    recorder = hydra.utils.instantiate(cfg.recorder, save_dir=calib_poses_dir)
     while True:
         fps.step()
         action, record_info = input_device.get_action()
@@ -30,7 +34,7 @@ def record_static_cam_trajectory(robot, marker_detector, cfg):
             continue
 
         target_pos, target_orn, _ = action
-        robot.move_cart_pos_abs_ptp(target_pos, target_orn)
+        robot.move_async_cart_pos_abs_ptp(target_pos, target_orn)
 
         marker_pose = marker_detector.estimate_pose()
         if marker_pose is not None:
@@ -43,7 +47,8 @@ def record_static_cam_trajectory(robot, marker_detector, cfg):
 def detect_marker_from_trajectory(robot, tcp_poses, marker_detector, cfg):
 
     robot.move_to_neutral()
-
+    time.sleep(5)
+    robot.close_gripper(blocking=True)
     marker_poses = []
     valid_tcp_poses = []
 
@@ -62,17 +67,15 @@ def detect_marker_from_trajectory(robot, tcp_poses, marker_detector, cfg):
     return valid_tcp_poses, marker_poses
 
 
-def load_static_cam_trajectory(dir):
+def load_static_cam_trajectory(path):
 
     tcp_poses = []
     marker_poses = []
 
-    for file in os.listdir(dir):
-        if file.endswith(".npz"):
-            filename = os.path.join(dir, file)
-            pose = np.load(filename)
-            tcp_poses.append(pose['tcp_pose'])
-            marker_poses.append(pose['marker_pose'])
+    for filename in path.glob("*.npz"):
+        pose = np.load(filename)
+        tcp_poses.append(pose['tcp_pose'])
+        marker_poses.append(pose['marker_pose'])
 
     return tcp_poses, marker_poses
 
@@ -82,18 +85,20 @@ def main(cfg):
     cam = hydra.utils.instantiate(cfg.cam)
     marker_detector = hydra.utils.instantiate(cfg.marker_detector, cam=cam)
     robot = hydra.utils.instantiate(cfg.robot)
+    calib_poses_dir = Path(f"{robot.name}_{marker_detector.cam.name}_calib_poses")
     if cfg.record_traj:
-        tcp_poses, marker_poses = record_static_cam_trajectory(robot, marker_detector, cfg)
+        tcp_poses, marker_poses = record_static_cam_trajectory(robot, marker_detector, cfg, calib_poses_dir)
     elif cfg.play_traj:
-        tcp_poses, _ = load_static_cam_trajectory(cfg.load_dir)
+        tcp_poses, _ = load_static_cam_trajectory(calib_poses_dir)
         tcp_poses, marker_poses = detect_marker_from_trajectory(robot, tcp_poses, marker_detector, cfg)
     else:
-        tcp_poses, marker_poses = load_static_cam_trajectory(cfg.load_dir)
+        tcp_poses, marker_poses = load_static_cam_trajectory(calib_poses_dir)
     T_robot_cam = calibrate_static_cam_least_squares(tcp_poses, marker_poses)
     save_calibration(robot.name, cam.name, "cam", "robot", T_robot_cam)
     # calculate_error(T_tcp_cam, tcp_poses, marker_poses)
     # print(T_robot_cam)
     visualize_calibration_static_cam(cam, T_robot_cam)
+
 
 if __name__ == "__main__":
     main()

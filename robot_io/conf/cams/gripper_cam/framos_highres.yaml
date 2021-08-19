@@ -16,5 +16,5 @@ params:
   saturation: 64.0
   sharpness: 50.0
   white_balance: 3400.0
-  enable_auto_exposure: 0.0
-  enable_auto_white_balance: 0.0
+  enable_auto_exposure: 1.0
+  enable_auto_white_balance: 1.0

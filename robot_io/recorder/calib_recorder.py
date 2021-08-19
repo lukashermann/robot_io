@@ -1,4 +1,5 @@
 import os
+import shutil
 import time
 from pathlib import Path
 
@@ -13,7 +14,7 @@ log = logging.getLogger(__name__)
 
 
 class CalibRecorder:
-    def __init__(self, n_digits):
+    def __init__(self, n_digits, save_dir):
         self.queue = mp.Queue()
         self.process = mp.Process(target=self.process_queue, name="MultiprocessingStorageWorker")
         self.process.start()
@@ -23,6 +24,14 @@ class CalibRecorder:
         self.prev_done = False
         self.current_episode_filenames = []
         self.n_digits = n_digits
+        self.save_dir = Path(save_dir)
+        if len(list(self.save_dir.glob("*.npz"))):
+            answer = input(f"{Path(os.getcwd()) / save_dir} not empty. Delete files? (Y/n)")
+            if answer == "" or answer.lower() == "y":
+                shutil.rmtree(self.save_dir)
+            else:
+                exit()
+        os.makedirs(self.save_dir, exist_ok=True)
 
     def step(self, tcp_pose, marker_pose, record_info):
         if record_info["trigger_release"]:
@@ -30,7 +39,7 @@ class CalibRecorder:
             self.save(tcp_pose, marker_pose)
 
     def save(self, tcp_pose, marker_pose):
-        filename = f"frame_{self.save_frame_cnt:0{self.n_digits}d}.npz"
+        filename = self.save_dir / f"frame_{self.save_frame_cnt:0{self.n_digits}d}.npz"
         self.current_episode_filenames.append(filename)
         self.save_frame_cnt += 1
         self.queue.put((filename, tcp_pose, marker_pose))

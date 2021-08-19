@@ -1,5 +1,6 @@
 import cv2
 import hydra
+import numpy as np
 
 from robot_io.cams.threaded_camera import ThreadedCamera
 
@@ -35,6 +36,16 @@ class CameraManager:
             obs[f'depth_static'] = depth
         self.obs = obs
         return obs
+
+    def save_calibration(self, robot_name):
+        camera_info = {}
+        if self.gripper_cam is not None:
+            camera_info["gripper_extrinsic_calibration"] = self.gripper_cam.get_extrinsic_calibration(robot_name)
+            camera_info["gripper_intrinsics"] = self.gripper_cam.get_intrinsics()
+        if self.static_cam is not None:
+            camera_info["static_extrinsic_calibration"] = self.gripper_cam.get_extrinsic_calibration(robot_name)
+            camera_info["static_intrinsics"] = self.gripper_cam.get_intrinsics()
+        np.savez("camera_info.npz", **camera_info)
 
     def render(self):
         if "rgb_gripper" in self.obs:

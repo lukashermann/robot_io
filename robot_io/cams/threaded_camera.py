@@ -38,6 +38,9 @@ class ThreadedCamera:
     def revert_crop_and_resize(self, img):
         return self._camera_thread.camera.revert_crop_and_resize(img)
 
+    def get_extrinsic_calibration(self, robot_name):
+        return self._camera_thread.camera.get_extrinsic_calibration(robot_name)
+
     def __del__(self):
         self._camera_thread.flag_exit = True
         self._camera_thread.join()

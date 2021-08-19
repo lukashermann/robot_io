@@ -50,6 +50,13 @@ class BaseRobotInterface:
         """
         raise NotImplementedError
 
+    def move_joint_pos(self, joint_positions):
+        """
+        Move robot to absolute joint positions, blocking.
+        :param joint_positions: (j1, ..., jn)
+        """
+        raise NotImplementedError
+
     def move_async_cart_pos_abs_ptp(self, target_pos, target_orn):
         """
         Move robot to absolute cartesian pose with a PTP motion, non blocking
@@ -96,15 +103,23 @@ class BaseRobotInterface:
         """
         raise NotImplementedError
 
-    def close_gripper(self):
+    def abort_motion(self):
         """
-        Close fingers of the gripper.
+        Stop the execution of the current motion.
         """
         raise NotImplementedError
 
-    def open_gripper(self):
+    def close_gripper(self, blocking=False):
+        """
+        Close fingers of the gripper.
+        :param blocking: wait for gripper action to be finished
+        """
+        raise NotImplementedError
+
+    def open_gripper(self, blocking=False):
         """
         Open fingers of the gripper.
+        :param blocking: wait for gripper action to be finished
         """
         raise NotImplementedError
 

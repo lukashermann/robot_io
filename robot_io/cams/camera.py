@@ -114,6 +114,25 @@ class Camera:
             log.warning("Projected point outside of image bounds")
         return result[0], result[1]
 
+    def deproject(self, point, depth_img, homogeneous=False):
+        intr = self.get_intrinsics()
+        cx = intr["cx"]
+        cy = intr["cy"]
+        fx = intr["fx"]
+        fy = intr["fy"]
+
+        v_crd, u_crd = point
+
+        Z = depth_img[u_crd, v_crd]
+        if Z == 0:
+            return None
+        X = (v_crd - cx) * Z / fx
+        Y = (u_crd - cy) * Z / fy
+        if homogeneous:
+            return np.array([X, Y, Z, 1])
+        else:
+            return np.array([X, Y, Z])
+
     @staticmethod
     def draw_point(img, point, color=(255, 0, 0)):
         img[point[1], point[0]] = color

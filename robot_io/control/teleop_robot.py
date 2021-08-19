@@ -1,4 +1,3 @@
-import sys
 import time
 
 import hydra
@@ -16,6 +15,7 @@ def main(cfg):
 
     obs = env.reset()
     recorder = hydra.utils.instantiate(cfg.recorder)
+    env.camera_manager.save_calibration(robot.name)
     t1 = time.time()
     while True:
         action, record_info = input_device.get_action()

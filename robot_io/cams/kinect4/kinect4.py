@@ -41,6 +41,9 @@ class Kinect4(Camera):
         self.camera_matrix = data['camera_matrix']
         self.projection_matrix = data['projection_matrix']
         self.intrinsics = data['intrinsics'].item()
+        self.intrinsics.update({"crop_coords": self.crop_coords,
+                                "resize_resolution": self.resize_resolution,
+                                "dist_coeffs": self.dist_coeffs})
         self.map1, self.map2 = cv2.initUndistortRectifyMap(self.camera_matrix, self.dist_coeffs, R=np.eye(3), \
                                                            newCameraMatrix=self.camera_matrix,
                                                            size=(self.intrinsics['width'], self.intrinsics['height']),
@@ -111,6 +114,7 @@ class Kinect4(Camera):
 def run_camera():
     # cam = Kinect4(0, crop_coords=(301, 623, 516, 946), resize_resolution=(200, 150))
     cam = Kinect4(0)
+    print(cam.get_intrinsics())
     while True:
         rgb, depth = cam.get_image()
         cv2.imshow("depth", depth)

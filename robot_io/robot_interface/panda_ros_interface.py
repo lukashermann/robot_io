@@ -1,4 +1,6 @@
 import time
+
+import hydra.utils
 import numpy as np
 from copy import deepcopy
 
@@ -7,7 +9,7 @@ from scipy.spatial.transform.rotation import Rotation as R
 from robot_io.utils.utils import np_quat_to_scipy_quat, pos_orn_to_matrix, euler_to_quat
 from robot_io.robot_interface.base_robot_interface import BaseRobotInterface, GripperState
 from panda_robot import PandaArm
-from robot_io.control.IKfast_panda import IKfast
+# from robot_io.control.IKfast_panda import IKfast
 
 
 class PandaRosInterface(BaseRobotInterface):
@@ -17,7 +19,7 @@ class PandaRosInterface(BaseRobotInterface):
                  k_gains,
                  d_gains,
                  ik_solver,
-                 rest_pose,
+                 # rest_pose,
                  workspace_limits,
                  use_impedance):
         """
@@ -33,14 +35,20 @@ class PandaRosInterface(BaseRobotInterface):
         rospy.init_node("PandaRosInterface")
         self.robot = PandaArm()
         self.gripper = self.robot.get_gripper()
+        self.gripper_state = GripperState.CLOSED
+        self.open_gripper()
         self.gripper_state = GripperState.OPEN
         self.set_collision_threshold(force_threshold, torque_threshold)
         self.activate_controller(use_impedance, k_gains, d_gains)
         self.prev_j_des = self.robot._neutral_pose_joints
         self.ik_solver = ik_solver
-        if ik_solver == 'ik_fast':
-            self.ik_fast = IKfast(rp=rest_pose, joint_limits=self.robot.joint_limits(), weights=(10, 8, 6, 6, 2, 2, 1),
-                                  num_angles=50)
+        # if ik_solver == 'ik_fast':
+        #     self.ik_fast = hydra.utils.instantiate(ik_cfg)
+        #     self.ik_fast = IKfast(rp=rest_pose,
+        #                           ll=self.robot.joint_limits()['lower'],
+        #                           ul=self.robot.joint_limits()['upper'],
+        #                           weights=(10, 8, 6, 6, 2, 2, 1),
+        #                           num_angles=50)
         super().__init__()
 
     def move_to_neutral(self):
@@ -82,14 +90,14 @@ class PandaRosInterface(BaseRobotInterface):
             raise ValueError
         self.move_async_cart_pos_abs_ptp(target_pos, target_orn)
 
-    def open_gripper(self):
+    def open_gripper(self, blocking=False):
         if self.gripper_state == GripperState.CLOSED:
-            self.gripper.move_joints(width=0.2, speed=3, wait_for_result=False)
+            self.gripper.move_joints(width=0.2, speed=3, wait_for_result=blocking)
             self.gripper_state = GripperState.OPEN
 
-    def close_gripper(self):
+    def close_gripper(self, blocking=False):
         if self.gripper_state == GripperState.OPEN:
-            self.gripper.grasp(width=0.02, force=5, speed=5, epsilon_inner=0.005, epsilon_outer=0.02,wait_for_result=False)
+            self.gripper.grasp(width=0.02, force=5, speed=5, epsilon_inner=0.005, epsilon_outer=0.02,wait_for_result=blocking)
             self.gripper_state = GripperState.CLOSED
 
     def set_collision_threshold(self, force_threshold, torque_threshold):

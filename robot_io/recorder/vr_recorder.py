@@ -6,9 +6,14 @@ import numpy as np
 import multiprocessing as mp
 import threading
 import logging
+from pathlib import Path
 from robot_io.utils.utils import TextToSpeech
 # A logger for this file
 log = logging.getLogger(__name__)
+
+
+def count_previous_frames():
+    return len(list(Path.cwd().glob("frame*.npz")))
 
 
 class VrRecorder:
@@ -18,9 +23,8 @@ class VrRecorder:
         self.process = mp.Process(target=self.process_queue, name="MultiprocessingStorageWorker")
         self.process.start()
         self.running = True
-        self.save_frame_cnt = 0
+        self.save_frame_cnt = count_previous_frames()
         self.tts = TextToSpeech()
-        self.prev_done = False
         self.current_episode_filenames = []
         self.n_digits = n_digits
         self.delete_thread = None
@@ -32,6 +36,7 @@ class VrRecorder:
             self.current_episode_filenames = []
         elif record_info["trigger_release"] and self.recording:
             self.recording = False
+            self.save(action, obs, True)
             self.tts.say("finish recording")
         if record_info["hold_event"]:
             if self.recording:
@@ -39,7 +44,7 @@ class VrRecorder:
             self.delete_last_episode()
 
         if self.recording:
-            self.save(action, obs)
+            self.save(action, obs, False)
 
     @property
     def is_deleting(self):
@@ -62,11 +67,11 @@ class VrRecorder:
         self.save_frame_cnt -= num_frames
         self.current_episode_filenames = []
 
-    def save(self, action, obs):
+    def save(self, action, obs, done):
         filename = f"frame_{self.save_frame_cnt:0{self.n_digits}d}.npz"
         self.current_episode_filenames.append(filename)
         self.save_frame_cnt += 1
-        self.queue.put((filename, action, obs))
+        self.queue.put((filename, action, obs, done))
 
     def process_queue(self):
         """
@@ -79,8 +84,8 @@ class VrRecorder:
             if msg == "QUIT":
                 self.running = False
                 break
-            filename, action, obs = msg
-            np.savez(filename, **obs, action=action)
+            filename, action, obs, done = msg
+            np.savez(filename, **obs, action=action, done=done)
 
     def __enter__(self):
         """

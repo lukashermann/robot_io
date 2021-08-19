@@ -90,7 +90,8 @@ class Realsense(Camera):
         color_profile = rs.video_stream_profile(self.profile.get_stream(rs.stream.color))
         intr = color_profile.get_intrinsics()
         intr_rgb = dict(width=intr.width, height=intr.height, fx=intr.fx, fy=intr.fy,
-                        cx=intr.ppx, cy=intr.ppy)
+                        cx=intr.ppx, cy=intr.ppy, crop_coords=self.crop_coords,
+                        resize_resolution=self.resize_resolution, dist_coeffs=self.get_dist_coeffs())
         return intr_rgb
 
     def get_projection_matrix(self):
@@ -114,15 +115,16 @@ class Realsense(Camera):
 def test_cam():
     # Import OpenCV for easy image rendering
     import cv2
-    cam_cfg = OmegaConf.load("../../conf/cams/gripper_cam/realsense.yaml")
+    cam_cfg = OmegaConf.load("../../conf/cams/gripper_cam/framos_highres.yaml")
     cam = hydra.utils.instantiate(cam_cfg)
 
     rgb, depth = cam.get_image()
+    print(cam.get_intrinsics())
     while 1:
         rgb, depth = cam.get_image()
 
-        pc = cam.compute_pointcloud(depth, rgb)
-        cam.view_pointcloud(pc)
+        # pc = cam.compute_pointcloud(depth, rgb)
+        # cam.view_pointcloud(pc)
         cv2.imshow("rgb", rgb[:, :, ::-1])
         # depth *= (255 / 4)
         # depth = np.clip(depth, 0, 255)
