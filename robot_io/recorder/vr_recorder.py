@@ -7,9 +7,16 @@ import multiprocessing as mp
 import threading
 import logging
 from pathlib import Path
-from robot_io.utils.utils import TextToSpeech
+from robot_io.utils.utils import TextToSpeech, depth_img_to_uint16
 # A logger for this file
 log = logging.getLogger(__name__)
+
+
+def process_obs(obs):
+    for key, value in obs:
+        if "depth" in key:
+            obs[key] = depth_img_to_uint16(obs[key])
+    return obs
 
 
 def count_previous_frames():
@@ -85,6 +92,8 @@ class VrRecorder:
                 self.running = False
                 break
             filename, action, obs, done = msg
+            # change datatype of depth images to save storage space
+            obs = process_obs(obs)
             np.savez(filename, **obs, action=action, done=done)
 
     def __enter__(self):

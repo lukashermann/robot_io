@@ -130,3 +130,13 @@ def get_git_root(path):
     git_repo = git.Repo(Path(path), search_parent_directories=True)
     git_root = git_repo.git.rev_parse("--show-toplevel")
     return Path(git_root)
+
+
+def depth_img_to_uint16(depth_img, max_depth=4):
+    depth_img = np.clip(depth_img, 0, max_depth)
+    return depth_img / max_depth * (2 ** 16 - 1).astype('uint16')
+
+
+def depth_img_from_uint16(depth_img, max_depth=4):
+    return depth_img.astype('float') / (2 ** 16 - 1) * max_depth
+
