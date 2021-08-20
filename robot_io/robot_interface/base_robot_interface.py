@@ -139,3 +139,14 @@ class BaseRobotInterface:
         pos_error = np.linalg.norm(target_pos - curr_pos)
         orn_error = np.linalg.norm((R.from_quat(target_orn) * R.from_quat(curr_orn).inv()).as_rotvec())
         return pos_error < cart_threshold and orn_error < orn_threshold
+
+    def reached_joint_state(self, target_state, threshold=0.001):
+        """
+        Check if robot has reached a target joint state
+        :param target_state: (j1, ..., jn)
+        :param threshold:
+        :return: True if reached state, else False
+        """
+        curr_pos = self.get_state()['joint_positions']
+        offset = np.sum(np.abs((np.array(target_state) - curr_pos)))
+        return offset < threshold

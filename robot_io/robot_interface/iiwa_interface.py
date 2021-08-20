@@ -66,11 +66,9 @@ class IIWAInterface(BaseRobotInterface):
         if len(self.neutral_pose) == 6:
             target_pos = self.neutral_pose[:3]
             target_orn = euler_to_quat(self.neutral_pose[3:6])
-            self.move_async_cart_pos_abs_ptp(target_pos, target_orn)
-            while not self.reached_position(target_pos, target_orn):
-                time.sleep(0.1)
+            self.move_cart_pos_abs_ptp(target_pos, target_orn)
         elif len(self.neutral_pose) == 7:
-            self.move_async_joint_pos(self.neutral_pose)
+            self.move_joint_pos(self.neutral_pose)
 
     def get_state(self):
         msg = np.array([self.version_counter], dtype=np.int32).tobytes()
@@ -90,6 +88,11 @@ class IIWAInterface(BaseRobotInterface):
     def move_cart_pos_abs_ptp(self, target_pos, target_orn):
         self.move_async_cart_pos_abs_ptp(target_pos, target_orn)
         while not self.reached_position(target_pos, target_orn):
+            time.sleep(0.1)
+
+    def move_joint_pos(self, joint_positions):
+        self.move_async_joint_pos(joint_positions)
+        while not self.reached_joint_state(joint_positions):
             time.sleep(0.1)
 
     def move_async_cart_pos_abs_ptp(self, target_pos, target_orn):
