@@ -21,6 +21,9 @@ JAVA_GET_INFO = 6
 JAVA_INIT = 7
 JAVA_ABORT_MOTION = 8
 
+# iiwa TCP frames
+TCP_SHORT_FINGER = 20
+TCP = 21
 
 class IIWAInterface(BaseRobotInterface):
     def __init__(self,
@@ -33,6 +36,7 @@ class IIWAInterface(BaseRobotInterface):
                  cartesian_vel=100,
                  cartesian_acc=300,
                  workspace_limits=((0.3, -0.3, 0.2), (0.6, 0.3, 0.4)),
+                 tcp_name=TCP_SHORT_FINGER,
                  neutral_pose=(0.5, 0, 0.25, pi, 0, pi / 2)):
         """
         :param host: "localhost"
@@ -44,6 +48,7 @@ class IIWAInterface(BaseRobotInterface):
         :param cartesian_vel: max translational and rotational velocity of EE, in mm/s, for LIN motions
         :param cartesian_acc: max translational and rotational acceleration of EE, in mm/s**2, for LIN motions
         :param workspace_limits: Cartesian limits of TCP position, [x_min, x_max, y_min, y_max, z_min, z_max], in meter
+        :param tcp_name: name of tcp frame in Java RoboticsAPI.data.xml
         """
         self.name = "iiwa"
         self.address = (host, port + 500)
@@ -55,7 +60,7 @@ class IIWAInterface(BaseRobotInterface):
         self.use_impedance = use_impedance
         self._send_init_message()
         self.set_properties(joint_vel, gripper_rot_vel, joint_acc, cartesian_vel, cartesian_acc, use_impedance,
-                            workspace_limits)
+                            workspace_limits, tcp_name)
         self.neutral_pose = np.array(neutral_pose)
         self.gripper = WSG50Controller()
         self.gripper_state = GripperState.OPEN
@@ -158,7 +163,8 @@ class IIWAInterface(BaseRobotInterface):
         msg += np.array([JAVA_INIT], dtype=np.int16).tobytes()
         return self._send_recv_message(msg, 188)
 
-    def set_properties(self, joint_vel, gripper_rot_vel, joint_acc, cartesian_vel, cartesian_acc, use_impedance, workspace_limits):
+    def set_properties(self, joint_vel, gripper_rot_vel, joint_acc, cartesian_vel, cartesian_acc, use_impedance,
+                       workspace_limits, tcp_name):
         msg = np.array([self.version_counter], dtype=np.int32).tobytes()
         msg += np.array([JAVA_SET_PROPERTIES], dtype=np.int16).tobytes()
         msg += np.array([joint_vel], dtype=np.float64).tobytes()
@@ -173,6 +179,7 @@ class IIWAInterface(BaseRobotInterface):
         msg += np.array([workspace_limits[1][1] * 1000], dtype=np.float64).tobytes()
         msg += np.array([workspace_limits[0][2] * 1000], dtype=np.float64).tobytes()
         msg += np.array([workspace_limits[1][2] * 1000], dtype=np.float64).tobytes()
+        msg += np.array([tcp_name], dtype=np.int16).tobytes()
         state = self._send_recv_message(msg, 188)
 
     @staticmethod
