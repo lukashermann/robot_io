@@ -4,3 +4,5 @@ act_type: 'continuous'
 sensitivity: 100
 mode: '5dof'
 initial_gripper_state: 'open'
+dv: 0.01
+drot: 0.2

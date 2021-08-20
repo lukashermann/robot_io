@@ -3,6 +3,7 @@ SpaceMouse input class
 """
 import time
 import numpy as np
+from robot_io.utils.utils import euler_to_quat
 
 try:
     import spnav
@@ -13,16 +14,21 @@ except OSError as err:
     print(err)
     print("Try to rename 'libspnav.so' to e.g. 'libspnav.so.0' in line 10 of spnav.__init__.py")
 
+GRIPPER_CLOSING_ACTION = -1
+GRIPPER_OPENING_ACTION = 1
 
 class SpaceMouse:
     """SpaceMouse input class"""
-    def __init__(self, act_type='continuous', sensitivity=100, mode="5dof", initial_gripper_state='open', **kwargs):
+    def __init__(self, act_type='continuous', sensitivity=100, mode="5dof", initial_gripper_state='open',
+                 dv=0.01, drot=0.2, **kwargs):
         """
 
         :param act_type: ['continuous', 'discrete'] specifies action output
         :param sensitivity: lower value corresponds to higher sensitivity
         :param mode: ['5dof', '7dof'] how many DOF of the robot are controlled
         :param initial_gripper_state: ['open', 'closed'] initial opening of gripper
+        :dv factor for cartesian position offset in relative cartesian position control, in meter
+        :drot factor for orientation offset of gripper rotation in relative cartesian position control, in radians
         """
         # Note: this hangs if the SpaceNav mouse is not connecting properly
         # mostly commenting out this imput stream will be ok.
@@ -37,9 +43,50 @@ class SpaceMouse:
         assert act_type in ['continuous', 'discrete']
         self.act_type = act_type
         self.threshold = sensitivity
+        self.dv = dv
+        self.drot = drot
+        # Filter for random zeros of our current space mouse
+        self.filter = True
+        self.prev_pos = np.zeros(3)
+        self.prev_orn = np.zeros(3)
 
     def __del__(self):
         spnav.spnav_close()
+
+    def get_action(self):
+        if self.mode == '5dof':
+            sm_action = self.handle_mouse_events_5dof()
+            sm_action = np.array(sm_action)
+            sm_controller_pos = sm_action[0:3] * self.dv
+            sm_controller_orn = np.array([0, 0, sm_action[3] * self.drot])
+            gripper_action = sm_action[4]
+
+        elif self.mode == '7dof':
+            sm_action = self.handle_mouse_events_7dof()
+            sm_action = np.array(sm_action)
+            sm_controller_pos = sm_action[0:3] * self.dv
+            sm_controller_orn = euler_to_quat(np.array([sm_action[3] * self.drot, sm_action[4] * self.drot, sm_action[5] * self.drot]))
+            gripper_action = sm_action[6]
+
+        else:
+            raise ValueError
+
+        if np.all((sm_controller_pos == 0)) and np.all((sm_controller_orn == 0)):
+            if self.filter:
+                sm_controller_pos = self.prev_pos
+                sm_controller_orn = self.prev_orn
+                self.filter = False
+        else:
+            self.prev_pos = sm_controller_pos
+            self.prev_orn = sm_controller_orn
+            self.filter = True
+
+        action = {"motion": (sm_controller_pos, sm_controller_orn, gripper_action), "ref": "rel"}
+        # To be compatible with vr input actions. For now there is nothing to pass as record info
+        record_info = None
+        self.clear_events()
+
+        return action, record_info
 
     def handle_mouse_events(self):
         """process events"""
@@ -124,9 +171,8 @@ def test_mouse():
     """test mouse, print actions"""
     mouse = SpaceMouse(act_type='continuous')
     for i in range(int(1e6)):
-        action = mouse.handle_mouse_events()
-        print(i, action)
-        mouse.clear_events()
+        action = mouse.get_action()
+        print(i, action[0]['motion'])
         time.sleep(.02)
 
 
