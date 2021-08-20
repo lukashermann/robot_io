@@ -148,26 +148,25 @@ def calibrate_static_cam_least_squares(T_robot_tcp, T_cam_marker):
     return T_robot_cam
 
 
-def visualize_calibration_static_cam(cam, T_robot_cam):
-    T_cam_robot = np.linalg.inv(T_robot_cam)
+def visualize_frame_in_static_cam(cam, T_cam_object):
 
-    robot = np.array([0, 0, 0, 1])
-    x = np.array([0.03, 0, 0, 1])
-    y = np.array([0, 0.03, 0, 1])
-    z = np.array([0, 0, 0.03, 1])
+    object = np.array([0, 0, 0, 1])
+    x = np.array([0.1, 0, 0, 1])
+    y = np.array([0, 0.1, 0, 1])
+    z = np.array([0, 0, 0.1, 1])
 
-    robot_cam = T_cam_robot @ robot
-    x_cam = T_cam_robot @ x
-    y_cam = T_cam_robot @ y
-    z_cam = T_cam_robot @ z
+    object_cam = T_cam_object @ object
+    x_cam = T_cam_object @ x
+    y_cam = T_cam_object @ y
+    z_cam = T_cam_object @ z
 
     rgb, _ = cam.get_image()
 
-    cv2.line(rgb, cam.project(robot_cam), cam.project(x_cam), color=(255,0,0), thickness=3)
-    cv2.line(rgb, cam.project(robot_cam), cam.project(y_cam), color=(0, 255, 0), thickness=3)
-    cv2.line(rgb, cam.project(robot_cam), cam.project(z_cam), color=(0,0, 255), thickness=3)
+    cv2.line(rgb, cam.project(object_cam), cam.project(x_cam), color=(255,0,0), thickness=3)
+    cv2.line(rgb, cam.project(object_cam), cam.project(y_cam), color=(0, 255, 0), thickness=3)
+    cv2.line(rgb, cam.project(object_cam), cam.project(z_cam), color=(0,0, 255), thickness=3)
 
-    cv2.imshow("calibration", rgb[:, :, ::-1])
+    cv2.imshow("object in cam", rgb[:, :, ::-1])
     cv2.waitKey(0)
 
 

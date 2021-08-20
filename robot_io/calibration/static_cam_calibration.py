@@ -6,7 +6,7 @@ import hydra
 import numpy as np
 
 from robot_io.utils.utils import matrix_to_pos_orn
-from robot_io.calibration.calibration import calibrate_static_cam_least_squares, visualize_calibration_static_cam
+from robot_io.calibration.calibration import calibrate_static_cam_least_squares, visualize_frame_in_static_cam
 from robot_io.calibration.calibration import save_calibration, calculate_error
 from robot_io.utils.utils import FpsController
 
@@ -52,7 +52,6 @@ def detect_marker_from_trajectory(robot, tcp_poses, marker_detector, cfg):
     marker_poses = []
     valid_tcp_poses = []
 
-    recorder = hydra.utils.instantiate(cfg.recorder)
     record_info = {"trigger_release": True}
     for i in range(len(tcp_poses)):
         target_pos, target_orn = matrix_to_pos_orn(tcp_poses[i])
@@ -62,7 +61,6 @@ def detect_marker_from_trajectory(robot, tcp_poses, marker_detector, cfg):
         if marker_pose is not None:
             valid_tcp_poses.append(tcp_poses[i])
             marker_poses.append(marker_pose)
-            recorder.step(tcp_poses[i], marker_pose, record_info)
 
     return valid_tcp_poses, marker_poses
 
@@ -97,8 +95,7 @@ def main(cfg):
     save_calibration(robot.name, cam.name, "cam", "robot", T_robot_cam)
     # calculate_error(T_tcp_cam, tcp_poses, marker_poses)
     # print(T_robot_cam)
-    visualize_calibration_static_cam(cam, T_robot_cam)
-
+    visualize_frame_in_static_cam(cam, np.linalg.inv(T_robot_cam))
 
 if __name__ == "__main__":
     main()
