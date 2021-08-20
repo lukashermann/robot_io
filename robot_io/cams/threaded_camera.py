@@ -32,8 +32,11 @@ class ThreadedCamera:
     def get_dist_coeffs(self):
         return self._camera_thread.camera.get_dist_coeffs()
 
-    def compute_pointcloud(self, depth_img):
-        return self._camera_thread.camera.compute_pointcloud(depth_img)
+    def compute_pointcloud(self, depth_img, rgb_img=None, far_val=10, homogeneous=False):
+        return self._camera_thread.camera.compute_pointcloud(depth_img, rgb_img, far_val, homogeneous)
+
+    def view_pointcloud(self, pointcloud):
+        return self._camera_thread.camera.view_pointcloud(pointcloud)
 
     def revert_crop_and_resize(self, img):
         return self._camera_thread.camera.revert_crop_and_resize(img)
@@ -65,12 +68,13 @@ class _CameraThread(threading.Thread):
 if __name__ == "__main__":
     from omegaconf import OmegaConf
     import cv2
-    cfg = OmegaConf.load("../conf/cams/gripper_cam/framos.yaml")
+    cfg = OmegaConf.load("../conf/cams/static_cam/kinect4.yaml")
     cam = ThreadedCamera(cfg)
-    print(cam.get_intrinsics())
+
     while True:
         rgb, depth = cam.get_image()
-        depth = cam.revert_crop_and_resize(depth)
+        pc = cam.compute_pointcloud(depth, rgb)
+        cam.view_pointcloud(pc)
         cv2.imshow("depth", depth)
         cv2.imshow("rgb", rgb[:, :, ::-1])
         cv2.waitKey(1)
