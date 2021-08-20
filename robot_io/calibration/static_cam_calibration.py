@@ -33,7 +33,8 @@ def record_static_cam_trajectory(robot, marker_detector, cfg, calib_poses_dir):
         if action is None:
             continue
 
-        target_pos, target_orn, _ = action
+        target_pos, target_orn, _ = action['motion']
+        # TODO: use LIN for panda
         robot.move_async_cart_pos_abs_ptp(target_pos, target_orn)
 
         marker_pose = marker_detector.estimate_pose()

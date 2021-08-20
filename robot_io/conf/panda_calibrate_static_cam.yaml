@@ -1,6 +1,6 @@
 save_dir: ../calibration/calibration_files/
-record_traj: true
-play_traj: false
+record_traj: false
+play_traj: true
 freq: 30
 
 hydra:

@@ -13,7 +13,7 @@ log = logging.getLogger(__name__)
 
 
 def process_obs(obs):
-    for key, value in obs:
+    for key, value in obs.items():
         if "depth" in key:
             obs[key] = depth_img_to_uint16(obs[key])
     return obs

@@ -103,6 +103,7 @@ class VrInput:
 
                 # transform pose from vr coord system to robot base frame
                 robot_action = self._transform_action_vr_to_robot_base(vr_action)
+                robot_action = {"motion": robot_action, "ref": "abs"}
                 self.prev_action = robot_action
         return self.prev_action, record_info
 
@@ -191,7 +192,6 @@ class VrInput:
         controller_analogue_axis = event[self.ANALOG]
 
         gripper_action = GRIPPER_CLOSING_ACTION if controller_analogue_axis > 0.1 else GRIPPER_OPENING_ACTION
-
         return vr_controller_pos, vr_controller_orn, gripper_action
 
     def wait_for_start_button(self):

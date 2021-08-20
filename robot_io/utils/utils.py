@@ -134,7 +134,7 @@ def get_git_root(path):
 
 def depth_img_to_uint16(depth_img, max_depth=4):
     depth_img = np.clip(depth_img, 0, max_depth)
-    return depth_img / max_depth * (2 ** 16 - 1).astype('uint16')
+    return (depth_img / max_depth * (2 ** 16 - 1)).astype('uint16')
 
 
 def depth_img_from_uint16(depth_img, max_depth=4):

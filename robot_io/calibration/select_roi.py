@@ -48,4 +48,4 @@ def select_roi(cam, resolution=None):
 
 if __name__ == "__main__":
     cam = Realsense(img_type='rgb_depth')
-    select_roi(cam, resolution=(200, 150))
+    select_roi(cam, resolution=(200, 200))

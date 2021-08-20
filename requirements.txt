@@ -12,3 +12,5 @@ digit-interface
 numpy-quaternion
 gitpython
 pyttsx3
+Cython
+commentjson

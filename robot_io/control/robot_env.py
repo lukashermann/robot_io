@@ -51,6 +51,7 @@ class RobotEnv(gym.Env):
 
         if ref is "abs":
             target_pos = self._restrict_workspace(target_pos)
+            # TODO: use LIN for panda
             self.robot.move_async_cart_pos_abs_ptp(target_pos, target_orn)
         elif ref is "rel":
             self.robot.move_async_cart_pos_rel_ptp(target_pos, target_orn)
