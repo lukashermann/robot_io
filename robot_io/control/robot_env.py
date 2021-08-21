@@ -49,11 +49,11 @@ class RobotEnv(gym.Env):
         target_pos, target_orn, gripper_action = action['motion']
         ref = action['ref']
 
-        if ref is "abs":
+        if ref == "abs":
             target_pos = self._restrict_workspace(target_pos)
             # TODO: use LIN for panda
             self.robot.move_async_cart_pos_abs_ptp(target_pos, target_orn)
-        elif ref is "rel":
+        elif ref == "rel":
             self.robot.move_async_cart_pos_rel_ptp(target_pos, target_orn)
         else:
             raise ValueError
