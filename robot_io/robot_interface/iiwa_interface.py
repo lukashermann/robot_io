@@ -6,7 +6,8 @@ import numpy as np
 from math import pi
 from robot_io.kuka_iiwa.wsg50_controller import WSG50Controller
 from robot_io.robot_interface.base_robot_interface import BaseRobotInterface, GripperState
-from robot_io.utils.utils import np_quat_to_scipy_quat, pos_orn_to_matrix, euler_to_quat, quat_to_euler
+from robot_io.utils.utils import np_quat_to_scipy_quat, pos_orn_to_matrix, euler_to_quat, quat_to_euler, \
+    matrix_to_pos_orn, xyz_to_zyx
 
 import logging
 log = logging.getLogger(__name__)
@@ -20,6 +21,8 @@ JAVA_SET_PROPERTIES = 5
 JAVA_GET_INFO = 6
 JAVA_INIT = 7
 JAVA_ABORT_MOTION = 8
+JAVA_SET_FRAME = 9
+
 
 # iiwa TCP frames
 TCP_SHORT_FINGER = 20
@@ -185,6 +188,25 @@ class IIWAInterface(BaseRobotInterface):
         msg += np.array([workspace_limits[0][2] * 1000], dtype=np.float64).tobytes()
         msg += np.array([workspace_limits[1][2] * 1000], dtype=np.float64).tobytes()
         msg += np.array([tcp_name], dtype=np.int16).tobytes()
+        state = self._send_recv_message(msg, 188)
+
+    def set_goal_frame(self, T_robot_goal, goal_workspace_limits):
+        msg = np.array([self.version_counter], dtype=np.int32).tobytes()
+        msg += np.array([JAVA_SET_FRAME], dtype=np.int16).tobytes()
+        pos, orn = matrix_to_pos_orn(T_robot_goal)
+        orn = xyz_to_zyx(quat_to_euler(orn))
+        msg += np.array([pos[0] * 1000], dtype=np.float64).tobytes()
+        msg += np.array([pos[1] * 1000], dtype=np.float64).tobytes()
+        msg += np.array([pos[2] * 1000], dtype=np.float64).tobytes()
+        msg += np.array([orn[0]], dtype=np.float64).tobytes()
+        msg += np.array([orn[1]], dtype=np.float64).tobytes()
+        msg += np.array([orn[2]], dtype=np.float64).tobytes()
+        msg += np.array([goal_workspace_limits[0][0] * 1000], dtype=np.float64).tobytes()
+        msg += np.array([goal_workspace_limits[1][0] * 1000], dtype=np.float64).tobytes()
+        msg += np.array([goal_workspace_limits[0][1] * 1000], dtype=np.float64).tobytes()
+        msg += np.array([goal_workspace_limits[1][1] * 1000], dtype=np.float64).tobytes()
+        msg += np.array([goal_workspace_limits[0][2] * 1000], dtype=np.float64).tobytes()
+        msg += np.array([goal_workspace_limits[1][2] * 1000], dtype=np.float64).tobytes()
         state = self._send_recv_message(msg, 188)
 
     @staticmethod
