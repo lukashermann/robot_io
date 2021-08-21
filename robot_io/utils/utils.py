@@ -40,6 +40,11 @@ def quat_to_euler(quat):
     return R.from_quat(quat).as_euler('xyz')
 
 
+def xyz_to_zyx(orn):
+    """xyz euler angles to zyx euler"""
+    return orn[::-1]
+
+
 def pos_orn_to_matrix(pos, orn):
     """
     :param pos: np.array of shape (3,)
