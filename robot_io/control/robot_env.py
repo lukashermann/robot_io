@@ -34,6 +34,16 @@ class RobotEnv(gym.Env):
         obs['robot_state'] = self.robot.get_state()
         return obs
 
+    def get_reward(self, obs, action):
+        return 0
+
+    def get_termination(self, obs):
+        return False
+
+    def get_info(self, obs, action):
+        info = {}
+        return info
+
     def step(self, action):
         """
         Execute one action on the robot.
@@ -66,7 +76,14 @@ class RobotEnv(gym.Env):
             raise ValueError
 
         obs = self._get_obs()
-        return obs, 0, False, {}
+
+        reward = self.get_reward(obs, action)
+
+        termination = self.get_termination(obs)
+
+        info = self.get_info(obs, action)
+
+        return obs, reward, termination, info
 
     def _restrict_workspace(self, target_pos):
         """
