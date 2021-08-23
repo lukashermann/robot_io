@@ -208,15 +208,13 @@ def main(cfg):
 
     pos, orn = robot.get_tcp_pos_orn()
 
-    # pos = np.array([0.480, -0.3, 0.40])
-    #
-    for i in range(30):
-        pos[2] -= 0.01
-        pos[0] += 0.01
-        robot.move_cart_pos_abs_ptp(pos, orn)
-        robot.visualize_joint_states()
-    time.sleep(10)
-
+    for dy in (.02, -.02):
+        new_pos = pos.copy()
+        new_pos[1] += dy
+        robot.move_cart_pos_abs_ptp(new_pos, orn)
+        #robot.visualize_joint_states()
+    robot.move_to_neutral()
+    print("done!")
 
 if __name__ == "__main__":
     main()

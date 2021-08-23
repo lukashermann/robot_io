@@ -1,6 +1,6 @@
 # Cameras
 
-###Azure Kinect (Kinect 4)
+### Azure Kinect (Kinect 4)
 - On Ubuntu 18 install azure kinect SDK with apt
 - On Ubuntu 20 download libk4a*(-dev) and libk4abt*(-dev) from https://packages.microsoft.com/ubuntu/18.04/prod/pool/main/libk/
   and k4atools from https://packages.microsoft.com/ubuntu/18.04/prod/pool/main/k/k4a-tools \
@@ -10,7 +10,7 @@
 
 - For default usage, start `$ python robot_io/cams/kinect4/kinect4.py`
 
-###RealSense SR300/SR305
+### RealSense SR300/SR305
 
 First follow installation instructions for librealsense2 [here](https://github.com/IntelRealSense/librealsense)
 ```
@@ -18,24 +18,26 @@ pip install pyrealsense2
 python robot_io/cams/realsense/realsenseSR300_librs2.py  # to test
 ```
 
-###Framos D435e
-- If `/usr/src/librealsense2` does not exist, download FRAMOS software package from
-  https://www.framos.com/en/industrial-depth-cameras#downloads. Follow installation instructions, 
-  make sure to use local admin user (e.g. xam2) to install (file system may NOT be network mounted).
-  Copy `robot_io/cams/framos/setup_files/setup.py` to `/usr/src/librealsense2`.
-- Get a local copy of framos librealsense2 in your Home directory.\
-`$ cp -r /usr/src/librealense2 <PATH/IN/YOUR/HOME>`
-- Uninstall existing installations of pyrealsense2 in your Python env.  
-- Install package 
+### Framos D435e
 ```
+groups | grep video  # user must be in video group, otherwise ask Michael K.
+file /usr/src/librealsense2  # (see below a)
+diff misc/framos_setup_files/setup.py /usr/src/librealsense2/setup.py
+cp -r /usr/src/librealsense2 .
 cd librealsense2
+pip uninstall pyrealsense2
 pip install -e .
+
+cd ../robot_io/robot_io/cams/realsense
+python realsense.py  # test script
 ```
-- Ask Michael Keser to add your user account to the 'video' unix group. Otherwise the camera will not be recognized.
-- Use Ethernet sockets on the ceiling for PoE. 
+- a) If `/usr/src/librealsense2` does not exist, download FRAMOS software package from https://www.framos.com/en/industrial-depth-cameras#downloads. Follow installation instructions, make sure to use local admin user (e.g. xam2) to install (file system may NOT be network mounted).
+- b) Use Ethernet sockets on the ceiling for PoE. 
 
 
-# KUKA iiwa
+# Robots
+
+## KUKA iiwa
 
 Clone Kuka Java Repository on aisgit
 ```git clone https://aisgit.informatik.uni-freiburg.de/hermannl/kuka_java_interface_no_ros```
@@ -52,7 +54,43 @@ Supported control modes:
 
 For more information please read README of [kuka_java_interface_no_ros](https://aisgit.informatik.uni-freiburg.de/hermannl/kuka_java_interface_no_ros)
 
-# Install SpaceMouse
+## Franka Emika Panda
+
+### IK fast
+IK fast is an analytic IK solver. In order to use IK fast, first install `ikfast-pybind`:
+```
+git clone --recursive https://github.com/yijiangh/ikfast_pybind
+cd ikfast_pybind
+# copy panda IK solution .cpp and .h to ikfast_pybind
+cp ../robot_io/misc/ik_fast_files/ikfast.h ./src/franka_panda/
+cp ../robot_io/misc/ik_fast_files/ikfast0x10000049.Transform6D.0_1_2_3_4_5_f6.cpp ./src/franka_panda/
+pip install .
+```
+For creating different IK solutions (e.g. in case of a different gripper) please refer to: 
+`http://docs.ros.org/en/kinetic/api/framefab_irb6600_support/html/doc/ikfast_tutorial.html`
+
+### Frankx
+```
+git clone git@github.com:lukashermann/frankx
+cd frankx
+git clone git@github.com:pantor/affx
+git clone git@github.com:pantor/ruckig
+cd affx; git checkout -b frankx_version dabe0ba; cd ..
+cd ruckig; git checkout -b frankx_version 31f50f0; cd ..
+
+conda install pybind11
+vim setupy.py  # add "-DFranka_DIR=/opt/ros/noetic/share/franka/cmake/"
+pip install -e .
+firefox https://192.168.167.87/desk/  # unlock joints
+export LD_LIBRARY_PATH=/opt/ros/noetic/lib/:$LD_LIBRARY_PATH
+
+cd robot_io/robot_interface
+python panda_frankx_interface.py  # test robot
+```
+
+# Input Devices
+
+## SpaceMouse
 ```
 sudo apt install libspnav-dev spacenavd
 conda activate robot
@@ -75,25 +113,10 @@ see numbers scrolling by.
 python robot_io/input_devices/space_mouse.py
 ```
 
-# Franka Emika Panda
 
-### IK fast
-IK fast is an analytic IK solver. In order to use IK fast, first install `ikfast-pybind`:
-```
-git clone --recursive https://github.com/yijiangh/ikfast_pybind
-cd ikfast_pybind
-# copy panda IK solution .cpp and .h to ikfast_pybind
-cp <PATH>/robot_io/robot_io/panda_control/src/ikfast.h ./src/franka_panda/
-cp <PATH>/robot_io/robot_io/panda_control/src/ikfast0x10000049.Transform6D.0_1_2_3_4_5_f6.cpp ./src/franka_panda/ 
-pip install .
-```
-For creating different IK solutions (e.g. in case of a different gripper) please refer to: 
-`http://docs.ros.org/en/kinetic/api/framefab_irb6600_support/html/doc/ikfast_tutorial.html`
+## VR Teleoperation
 
-# VR Teleoperation
-
-### Install Steam
-### Install SteamVR
+### Install Steam and SteamVR
 - In terminal run `$ steam`, it will start downloading an update and create a `.steam` folder in your home directory.
 - In Steam, create user account or use existing account.
 - Install SteamVR
@@ -103,7 +126,9 @@ For creating different IK solutions (e.g. in case of a different gripper) please
 - Connect and turn on HTC VIVE
 - Launch `Library -> SteamVR` (if not shown, check `[] Tools` box)
 - If SteamVR throws an  `Error: setcap of vrcompositor-launcher failed`, run `$ sudo setcap CAP_SYS_NICE+ep /media/hdd/SteamLibrary/steamapps/common/SteamVR/bin/linux64/vrcompositor-launcher`
-- Make sure Headset and controller are correctly detected, go through VR setup procedure
+- Make sure Headset and controller are correctly detected
+- Go through VR setup procedure (standing is sufficient)
+
 ### Install Bullet
 ```
 $ git clone https://github.com/bulletphysics/bullet3.git
@@ -122,7 +147,20 @@ $ pip install -e .  # effectively this is building bullet a second time, but imp
 
 # add alias to your bashrc
 alias bullet_vr="~/.steam/steam/ubuntu12_32/steam-runtime/run.sh </PATH/TO/BULLET/>bullet3/build_cmake/examples/SharedMemory/App_PhysicsServer_SharedMemory_VR"
+
+# to test VR control
+# make sure SteamVR is started
+$ bullet_vr
+$ cd <PATH/TO/ROBOTIO>/robot_io/robot_io/control
+$ python teleop_robot.py
 ```
+
+Robot Teleop instructions:
+1. Push dead-man switch (riffled grip right)
+2. Move controller in direction robot is pointing (twoards window)
+3. Push top middle button (with three lines)
+4. Robot should reset to home position
+5. Robot only moves with dead-man-switch activated
 
 ### Marker Detector
 
