@@ -7,7 +7,20 @@ import multiprocessing as mp
 import threading
 import logging
 from pathlib import Path
-from robot_io.utils.utils import TextToSpeech, depth_img_to_uint16
+from robot_io.utils.utils import depth_img_to_uint16
+
+try:
+    import pyttsx3
+    from robot_io.utils.utils import TextToSpeech
+except ModuleNotFoundError:
+    class TextToSpeech:
+        """
+        Print text if TextToSpeech unavailable.
+        """
+        def say(self, x):
+            print(x)
+
+
 # A logger for this file
 log = logging.getLogger(__name__)
 
@@ -94,7 +107,7 @@ class VrRecorder:
             filename, action, obs, done = msg
             # change datatype of depth images to save storage space
             obs = process_obs(obs)
-            np.savez(filename, **obs, action=action, done=done)
+            np.savez_compressed(filename, **obs, action=action, done=done)
 
     def __enter__(self):
         """
