@@ -28,7 +28,7 @@ cd librealsense2
 pip uninstall pyrealsense2
 pip install -e .
 
-cd ../robot_io/robot_io/cams/realsense
+cd ../robot_io/cams/realsense
 python realsense.py  # test script
 ```
 - a) If `/usr/src/librealsense2` does not exist, download FRAMOS software package from https://www.framos.com/en/industrial-depth-cameras#downloads. Follow installation instructions, make sure to use local admin user (e.g. xam2) to install (file system may NOT be network mounted).
