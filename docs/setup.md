@@ -118,6 +118,7 @@ python robot_io/input_devices/space_mouse.py
 
 ### Install Steam and SteamVR
 - In terminal run `$ steam`, it will start downloading an update and create a `.steam` folder in your home directory.
+- If you get an error, try deleting the steam folders on your home directory with `rm -rf .local/share/Steam/` and `rm -rf .steam`
 - In Steam, create user account or use existing account.
 - Install SteamVR
   - If on `pickup` click `Steam -> Settings -> Downloads -> Steam Library Folders -> Add Library Folder -> /media/hdd/SteamLibrary` to add the existing installation of SteamVR to your Steam account
