@@ -20,6 +20,8 @@ def main(cfg):
     while True:
         action, record_info = input_device.get_action()
         obs, _, _, _ = env.step(action)
+        # if action is None:
+        #     print("action is NONE!!!!!!!!!!!!!!")
         recorder.step(action, obs, record_info)
         env.render()
         fps.step()

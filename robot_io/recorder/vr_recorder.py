@@ -48,12 +48,18 @@ class VrRecorder:
         self.current_episode_filenames = []
         self.n_digits = n_digits
         self.delete_thread = None
+        self.dead_man_switch_was_down = False
     
     def step(self, action, obs, record_info):
+        if record_info["dead_man_switch_triggered"]:
+            self.dead_man_switch_was_down = True
         if record_info["trigger_release"] and not self.recording and not self.is_deleting:
-            self.recording = True
-            self.tts.say("start recording")
-            self.current_episode_filenames = []
+            if not self.dead_man_switch_was_down:
+                self.tts.say("please press the dead man switch once before starting to record")
+            else:
+                self.recording = True
+                self.tts.say("start recording")
+                self.current_episode_filenames = []
         elif record_info["trigger_release"] and self.recording:
             self.recording = False
             self.save(action, obs, True)
@@ -62,8 +68,8 @@ class VrRecorder:
             if self.recording:
                 self.recording = False
             self.delete_last_episode()
-
         if self.recording:
+            assert action is not None
             self.save(action, obs, False)
 
     @property

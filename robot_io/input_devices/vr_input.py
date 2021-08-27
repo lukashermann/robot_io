@@ -23,6 +23,7 @@ GRIPPER_OPENING_ACTION = 1
 DEFAULT_RECORD_INFO = {"hold": False,
                        "hold_event": False,
                        "down": False,
+                       "dead_man_switch_triggered": False,
                        "triggered": False,
                        "trigger_release": False}
 
@@ -119,6 +120,7 @@ class VrInput:
         self.prev_record_info = {"hold_event": record_button_hold and not self.prev_record_info["hold"],
                                  "hold": record_button_hold,
                                  "down": self._record_button_down(event),
+                                 "dead_man_switch_triggered": self._dead_mans_switch_triggered(event),
                                  "triggered": self._record_button_triggered(event) and self._record_button_down(event),
                                  "trigger_release": self._record_button_released(event) and not self.prev_record_info["hold"] and self.prev_record_info["down"]}
         return self.prev_record_info
@@ -224,6 +226,7 @@ class VrInput:
                         start_pose = pos_orn_to_matrix(vr_action[0], vr_action[1])
                     elif self._record_button_down(event) and start_pose is not None and end_pose is None:
                         print("end pose set")
+                        print("Now press the dead man's switch once before pressing record")
                         end_pose = pos_orn_to_matrix(vr_action[0], vr_action[1])
 
                     if start_pose is not None and end_pose is not None:
