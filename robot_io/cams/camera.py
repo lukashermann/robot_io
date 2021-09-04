@@ -114,7 +114,13 @@ class Camera:
             log.warning("Projected point outside of image bounds")
         return result[0], result[1]
 
-    def deproject(self, point, depth_img, homogeneous=False):
+    def deproject(self, point, depth, homogeneous=False):
+        """
+        Arguments:
+            point: (x, y)
+            depth: scalar or array, if array index with point
+            homogeneous: boolean, return homogenous coordinates
+        """
         intr = self.get_intrinsics()
         cx = intr["cx"]
         cy = intr["cy"]
@@ -123,7 +129,11 @@ class Camera:
 
         v_crd, u_crd = point
 
-        Z = depth_img[u_crd, v_crd]
+        if np.isscalar(depth):
+            Z = depth
+        else:
+            Z = depth[u_crd, v_crd]
+
         if Z == 0:
             return None
         X = (v_crd - cx) * Z / fx
@@ -144,6 +154,7 @@ class Camera:
             log.error(f"Calibration for {robot_name} and {self.name} does not exist.")
             raise FileNotFoundError
         newest_calib = sorted(calib_files, reverse=True)[0]
+        logging.info(f'Using calibration: {newest_calib}')
         return np.load(newest_calib)
 
 

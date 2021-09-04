@@ -1,10 +1,14 @@
-import threading
 import time
+import logging
+import threading
 
 import hydra
 import numpy as np
 
 from robot_io.utils.utils import FpsController, timeit
+
+
+log = logging.getLogger(__name__)
 
 
 class ThreadedCamera:
@@ -44,7 +48,11 @@ class ThreadedCamera:
     def get_extrinsic_calibration(self, robot_name):
         return self._camera_thread.camera.get_extrinsic_calibration(robot_name)
 
+    def deproject(self, point, depth, homogeneous=False):
+        return self._camera_thread.camera.deproject(point, depth, homogeneous)
+
     def __del__(self):
+        log.info("Closing camera.")
         self._camera_thread.flag_exit = True
         self._camera_thread.join()
 
@@ -68,13 +76,13 @@ class _CameraThread(threading.Thread):
 if __name__ == "__main__":
     from omegaconf import OmegaConf
     import cv2
-    cfg = OmegaConf.load("../conf/cams/static_cam/kinect4.yaml")
+    cfg = OmegaConf.load("../conf/cams/gripper_cam/framos_highres.yaml")
     cam = ThreadedCamera(cfg)
 
     while True:
         rgb, depth = cam.get_image()
-        pc = cam.compute_pointcloud(depth, rgb)
-        cam.view_pointcloud(pc)
+        # pc = cam.compute_pointcloud(depth, rgb)
+        # cam.view_pointcloud(pc)
         cv2.imshow("depth", depth)
         cv2.imshow("rgb", rgb[:, :, ::-1])
         cv2.waitKey(1)
