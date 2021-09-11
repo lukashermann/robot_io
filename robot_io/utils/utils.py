@@ -65,6 +65,26 @@ def pos_orn_to_matrix(pos, orn):
     return mat
 
 
+def orn_to_matrix(orn):
+    mat = np.eye(3)
+    if isinstance(orn, np.quaternion):
+        orn = np_quat_to_scipy_quat(orn)
+        mat[:3, :3] = R.from_quat(orn).as_matrix()
+    elif len(orn) == 4:
+        mat[:3, :3] = R.from_quat(orn).as_matrix()
+    elif len(orn) == 3:
+        mat[:3, :3] = R.from_euler('xyz', orn).as_matrix()
+    return mat
+
+
+def matrix_to_orn(mat):
+    """
+    :param mat: 4x4 homogeneous transformation
+    :return: tuple(position: np.array of shape (3,), orientation: np.array of shape (4,) -> quaternion xyzw)
+    """
+    return R.from_matrix(mat[:3, :3]).as_quat()
+
+
 def matrix_to_pos_orn(mat):
     """
     :param mat: 4x4 homogeneous transformation

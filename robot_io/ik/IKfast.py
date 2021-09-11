@@ -5,13 +5,12 @@ import numpy as np
 import pybullet as p
 from scipy.spatial.transform import Rotation as R
 import concurrent.futures
-from robot_io.utils.utils import pos_orn_to_matrix, timeit
+from robot_io.utils.utils import pos_orn_to_matrix, timeit, matrix_to_pos_orn
 
 
-def to_list(target_pos, target_orn):
-    pose = pos_orn_to_matrix(target_pos, target_orn)
+def to_list(pose):
     rot = pose[:3, :3].tolist()
-    pos = target_pos.tolist()
+    pos = pose[:3, 3].tolist()
     return pos, rot
 
 
@@ -21,9 +20,10 @@ class IKfast:
         rp,
         ll,
         ul,
+        F_T_NE,
         weights=(1, 1, 1, 1, 1, 1, 1),
         num_angles=50,
-        use_rest_pose=True
+        use_rest_pose=True,
     ):
         self.ll = np.array(ll)
         self.ul = np.array(ul)
@@ -32,10 +32,20 @@ class IKfast:
         self.weights = weights
         self.num_angles = num_angles
         self.use_rest_pose = use_rest_pose
+        # values from urdf that was used to generate ik fast solution
+        F_T_NE_ikfast = np.array([[0.707, 0.707, 0, 0],
+                                  [-0.707, 0.707, 0, 0],
+                                  [0, 0, 1, 0.1],
+                                  [0, 0, 0, 1]])
+        # this accounts for a new tcp frame (e.g. when using longer fingers)
+        self.NE_T_NE_ikfast = np.linalg.inv(F_T_NE) @ F_T_NE_ikfast
 
     def get_ik_solutions(self, target_pos, target_orn):
+        # transform from NE to NE_ikfast frame
+        # weird hack, otherwise ik doesnt find solution
+        target_pose = pos_orn_to_matrix(*matrix_to_pos_orn(pos_orn_to_matrix(target_pos, target_orn) @ self.NE_T_NE_ikfast))
         # IK fast needs position and orientation as lists
-        target_pos, target_orn = to_list(target_pos, target_orn)
+        target_pos, target_orn = to_list(target_pose)
         sols = []
         # call ik fast for different angles of redundant DOF
         for q_6 in np.linspace(self.ll[-1], self.ul[-1], self.num_angles):

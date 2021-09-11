@@ -4,6 +4,8 @@ import numpy as np
 
 import gym
 
+from robot_io.utils.utils import timeit
+
 
 class RobotEnv(gym.Env):
     def __init__(self,
@@ -19,11 +21,14 @@ class RobotEnv(gym.Env):
 
         self.camera_manager = hydra.utils.instantiate(camera_manager_cfg)
 
-    def reset(self):
+    def reset(self, target_pos=None, target_orn=None):
         """
         Reset robot to neutral position.
         """
-        self.robot.move_to_neutral()
+        if target_pos is not None and target_orn is not None:
+            self.robot.move_cart_pos_abs_ptp(target_pos, target_orn)
+        else:
+            self.robot.move_to_neutral()
         return self._get_obs()
 
     def _get_obs(self):

@@ -107,10 +107,10 @@ class SpaceMouse:
         event = spnav.spnav_poll_event()
         if event is not None:
             if event.ev_type == spnav.SPNAV_EVENT_MOTION:
-                x = -map_action(event.rotation[2])
-                y = map_action(event.rotation[0])
+                x = -map_action(event.rotation[0])
+                y = -map_action(event.rotation[2])
                 z = map_action(event.translation[1])
-                rot_z = -map_action(event.rotation[1])
+                rot_z = map_action(event.rotation[1])
                 return self._process_action_type([x, y, z, rot_z, self._gripper_state])
             if event.ev_type == spnav.SPNAV_EVENT_BUTTON:
                 if event.bnum == 0 and event.press:
