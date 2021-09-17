@@ -25,6 +25,7 @@ class RobotEnv(gym.Env):
         """
         Reset robot to neutral position.
         """
+        self.robot.open_gripper(blocking=True)
         if target_pos is not None and target_orn is not None:
             self.robot.move_cart_pos_abs_ptp(target_pos, target_orn)
         else:
@@ -69,7 +70,7 @@ class RobotEnv(gym.Env):
             # TODO: use LIN for panda
             self.robot.move_async_cart_pos_abs_lin(target_pos, target_orn)
         elif ref == "rel":
-            self.robot.move_async_cart_pos_rel_ptp(target_pos, target_orn)
+            self.robot.move_async_cart_pos_rel_lin(target_pos, target_orn)
         else:
             raise ValueError
 

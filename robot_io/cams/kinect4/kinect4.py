@@ -112,7 +112,6 @@ class Kinect4(Camera):
 
 
 def run_camera():
-    # cam = Kinect4(0, crop_coords=(301, 623, 516, 946), resize_resolution=(200, 150))
     cam = Kinect4(0)
     print(cam.get_intrinsics())
     while True:
