@@ -8,7 +8,7 @@ hydra:
 defaults:
   - env: env
   - robot: panda_frankx_interface
-  - input: vr_input
+  - input: 3dmouse
   - recorder: vr_recorder
   - cams: camera_manager
   - override hydra/job_logging: colorlog

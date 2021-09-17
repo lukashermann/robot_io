@@ -10,6 +10,7 @@ import quaternion
 from robot_io.robot_interface.base_robot_interface import BaseRobotInterface, GripperState
 from frankx import Affine, JointMotion, LinearMotion, Robot, PathMotion, WaypointMotion, Waypoint, LinearRelativeMotion, StopMotion, ImpedanceMotion, JointWaypointMotion
 from frankx.gripper import Gripper
+from _frankx import NetworkException
 from robot_io.utils.utils import np_quat_to_scipy_quat, pos_orn_to_matrix, quat_to_euler, euler_to_quat, \
     scipy_quat_to_np_quat, orn_to_matrix, matrix_to_orn, timeit
 import logging
@@ -119,16 +120,22 @@ class PandaFrankXInterface(BaseRobotInterface):
                                           [contact_force_threshold] * 6,
                                           [collision_force_threshold] * 6)
 
-
     def move_to_neutral(self):
         self.move_joint_pos(self.neutral_pose)
 
     def move_cart_pos_abs_ptp(self, target_pos, target_orn):
         self.reference_type = ReferenceType.ABSOLUTE
-        if self.use_impedance:
-            log.warning("Impedance motion is not available for synchronous motions. Not using impedance.")
+        # if self.use_impedance:
+        #     log.warning("Impedance motion is not available for synchronous motions. Not using impedance.")
         q_desired = self._inverse_kinematics(target_pos, target_orn)
         self.move_joint_pos(q_desired)
+
+    def move_cart_pos_rel_ptp(self, rel_target_pos, rel_target_orn):
+        target_pos, target_orn = self._relative_to_absolute(rel_target_pos, rel_target_orn)
+        self.reference_type = ReferenceType.RELATIVE
+        q_desired = self._inverse_kinematics(target_pos, target_orn)
+        self.abort_motion()
+        self.robot.move(JointMotion(q_desired))
 
     def move_async_cart_pos_rel_lin(self, rel_target_pos, rel_target_orn):
         target_pos, target_orn = self._relative_to_absolute(rel_target_pos, rel_target_orn)
@@ -180,7 +187,13 @@ class PandaFrankXInterface(BaseRobotInterface):
         #     # self.motion_thread.stop()
             self.motion_thread.join()
             self.motion_thread = None
-        self.robot.recover_from_errors()
+        while 1:
+            try:
+                self.robot.recover_from_errors()
+                break
+            except NetworkException:
+                time.sleep(0.01)
+                continue
 
     def _relative_to_absolute(self, rel_target_pos, rel_target_orn):
         state = self.get_state()
@@ -285,7 +298,11 @@ class PandaFrankXInterface(BaseRobotInterface):
             pose = self.robot.current_pose() * self.EE_T_NE
         else:
             pose = self.current_motion.current_pose() * self.EE_T_NE
-        return np.array(pose.translation()), np.array(pose.quaternion())
+            while np.all(pose.translation() == 0):
+                pose = self.current_motion.current_pose() * self.EE_T_NE
+                time.sleep(0.01)
+        pos, orn = np.array(pose.translation()), np.array(pose.quaternion())
+        return pos, orn
 
     def get_tcp_pose(self):
         return pos_orn_to_matrix(*self.get_tcp_pos_orn())
@@ -335,14 +352,20 @@ class PandaFrankXInterface(BaseRobotInterface):
 @hydra.main(config_path="../conf", config_name="panda_teleop.yaml")
 def main(cfg):
     robot = hydra.utils.instantiate(cfg.robot)
-    robot.move_to_neutral()
-
+    # robot.move_to_neutral()
+    time.sleep(1)
+    print(robot.get_state()["gripper_opening_width"])
+    time.sleep(2)
+    robot.open_gripper()
+    time.sleep(1)
+    exit()
     pos, orn = robot.get_tcp_pos_orn()
-
+    pos[0] += 0.2
+    pos[2] -= 0.1
     # pos[2] -= 0.05
     print("move")
     robot.move_cart_pos_abs_ptp(pos, orn)
-    time.sleep(1)
+    time.sleep(5)
     print("done!")
 
 

@@ -3,6 +3,9 @@ record_traj: false
 play_traj: true
 freq: 30
 
+marker_detector:
+  marker_description: "./tags/marker_36h11b2_3x3x_3cm_two.json"
+
 hydra:
   run:
     dir: ${save_dir}
