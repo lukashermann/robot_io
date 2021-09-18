@@ -54,6 +54,12 @@ class Kinect4(Camera):
         self.undistort_image = undistort_image
         self.fps = fps
         self.align_depth_to_color = align_depth_to_color
+        self.intrinsic_matrix = np.array([[self.intrinsics['fx'], 0, self.intrinsics['cx']],
+                                          [0, self.intrinsics['fy'], self.intrinsics['cy']],
+                                          [0, 0, 1]])
+        self.extrinsic_matrix = self.get_extrinsic_calibration("panda")
+        T_cam_world = np.linalg.inv(self.extrinsic_matrix)
+        self.projection_matrix = self.intrinsic_matrix @ T_cam_world[:-1, :]
 
     def load_config_path(self, config_path):
         if config_path is not None:
