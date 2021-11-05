@@ -9,11 +9,11 @@ Dependency for the TagDetector:
 
 Python packages needed:
  
-    opencv-python tqdm numpy imageio pyx Pillow pyrealsense2 matplotlib open3d scipy commentjson 
+    opencv-python tqdm numpy imageio pyx Pillow matplotlib scipy commentjson
     
 Build the TagDetector:
 
-    cd TagDetector && python setupBatch.py build_ext --inplace
+    cd apriltag_detection && python setupBatch.py build_ext --inplace
     
 # Credits
 

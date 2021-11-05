@@ -12,6 +12,7 @@ from robot_io.utils.utils import depth_img_to_uint16
 from robot_io.utils.utils import depth_img_from_uint16
 
 
+from flow_control.rgbd_camera import RGBDCamera
 
 # A logger for this file
 log = logging.getLogger(__name__)
@@ -85,6 +86,8 @@ class SimpleRecorder:
         with open(info_fn, 'w') as f_obj:
             json.dump(env_info, f_obj)
 
+        self.env.camera_manager.save_calibration(self.save_dir)
+
     def save(self):
         length = len(self.queue)
         self.process_queue()
@@ -92,10 +95,42 @@ class SimpleRecorder:
         print(f"saved {self.save_dir} w/ length {length}")
 
 
+class PlaybackCamera(RGBDCamera):
+    def __init__(self, camera_info, get_image_fn):
+        """
+        Provide a camera API from a recording.
+        """
+        self.camera_info = camera_info
+
+        self.gripper_extrinsic_calibration = camera_info["gripper_extrinsic_calibration"]
+        self.gripper_intrinsics = camera_info["gripper_intrinsics"]
+
+        self.calibration = self.gripper_intrinsics
+        # set get_image function
+        self.get_image = get_image_fn
+
+    def get_image(self):
+        raise NotImplementedError
+
+    def get_intrinsics(self):
+        return self.gripper_intrinsics
+
+    #def get_projection_matrix(self):
+    #    raise NotImplementedError
+
+    #def get_camera_matrix(self):
+    #    raise NotImplementedError
+
+    #def get_dist_coeffs(self):
+    #    raise NotImplementedError
+
+
 class RecEnv:
-    def __init__(self, file):
+    def __init__(self, file, camera_info):
         self.file = file
-        self.data = np.load(file, allow_pickle=True)
+        # make a copy to avoid having unclosed file buffers
+        with np.load(file, allow_pickle=True) as data:
+            self.data = dict(data)
 
         gripper_attrs = dict(width=self._robot_gripper_width)
         self._gripper = type("FakeGripper", (), gripper_attrs)
@@ -104,9 +139,8 @@ class RecEnv:
                            get_tcp_orn=self._robot_get_tcp_orn,
                            gripper=self._gripper)
         self.robot = type("FakeRobot", (), robot_attrs)
+        self.cam = PlaybackCamera(camera_info, self._cam_get_image)
 
-        cam_attrs = dict(get_image=self._cam_get_image)
-        self.cam = type("FakeCam", (), cam_attrs)
 
     def get_action(self):
         action = self.data["action"].item()
@@ -135,7 +169,15 @@ class RecEnv:
         return self.data["rgb_gripper"], depth_img_from_uint16(self.data["depth_gripper"])
 
 
+def np_to_dict(in_dict):
+    return dict([(k,v.item(0)) for k,v in in_dict.items()])
+
 def load_rec_list(recording_dir):
+    # load camera info, done so that we jus thave to load once
+    camera_info = np.load(os.path.join(recording_dir, "camera_info.npz"),
+                          allow_pickle=True)
+    camera_info = np_to_dict(camera_info)
+
     files = sorted(glob(f"{recording_dir}/frame_*.npz"))
-    return [RecEnv(fn) for fn in files]
+    return [RecEnv(fn, camera_info=camera_info) for fn in files]
 
