@@ -9,7 +9,7 @@ class CameraManager:
     """
     Class for handling different cameras
     """
-    def __init__(self, use_gripper_cam, use_static_cam, gripper_cam, static_cam, threaded_cameras):
+    def __init__(self, use_gripper_cam, use_static_cam, gripper_cam, static_cam, threaded_cameras, robot_name=None):
         self.gripper_cam = None
         self.static_cam = None
         if use_gripper_cam:
@@ -23,6 +23,9 @@ class CameraManager:
             else:
                 self.static_cam = hydra.utils.instantiate(static_cam)
         self.obs = None
+        self.robot_name = robot_name
+        if robot_name is not None:
+            self.save_calibration()
 
     def get_images(self):
         obs = {}
@@ -37,13 +40,13 @@ class CameraManager:
         self.obs = obs
         return obs
 
-    def save_calibration(self, robot_name):
+    def save_calibration(self):
         camera_info = {}
         if self.gripper_cam is not None:
-            camera_info["gripper_extrinsic_calibration"] = self.gripper_cam.get_extrinsic_calibration(robot_name)
+            camera_info["gripper_extrinsic_calibration"] = self.gripper_cam.get_extrinsic_calibration(self.robot_name)
             camera_info["gripper_intrinsics"] = self.gripper_cam.get_intrinsics()
         if self.static_cam is not None:
-            camera_info["static_extrinsic_calibration"] = self.static_cam.get_extrinsic_calibration(robot_name)
+            camera_info["static_extrinsic_calibration"] = self.static_cam.get_extrinsic_calibration(self.robot_name)
             camera_info["static_intrinsics"] = self.static_cam.get_intrinsics()
         np.savez("camera_info.npz", **camera_info)
 
@@ -71,3 +74,12 @@ class CameraManager:
         if "rgb_static" in self.obs:
             cv2.imshow("rgb_static", self.obs["rgb_static"][:, :, ::-1])
         cv2.waitKey(1)
+
+
+if __name__ == "__main__":
+    from omegaconf import OmegaConf
+    hydra.initialize("../conf/cams")
+    cfg = hydra.compose("camera_manager.yaml")
+    cfg.use_static_cam = False
+    cfg.threaded_cameras = False
+    cam_manager = hydra.utils.instantiate(cfg, robot_name="panda")
