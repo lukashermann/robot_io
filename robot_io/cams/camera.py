@@ -121,7 +121,8 @@ class Camera:
             depth: scalar or array, if array index with point
             homogeneous: boolean, return homogenous coordinates
         """
-        if depth.shape != self.resolution[::-1]:
+
+        if depth.shape != self.resolution[::-1] and not np.isscalar(depth):
             old_point = point
             old_depth = depth.copy()
             point_mat = np.zeros_like(depth)
@@ -132,6 +133,7 @@ class Camera:
             x_transformed = x_candidates[len(x_candidates) // 2]
             point = (x_transformed, y_transformed)
             depth = self.revert_crop_and_resize(depth)
+
         intr = self.get_intrinsics()
         cx = intr["cx"]
         cy = intr["cy"]
@@ -166,7 +168,9 @@ class Camera:
             raise FileNotFoundError
         newest_calib = sorted(calib_files, reverse=True)[0]
         logging.info(f'Using calibration: {newest_calib}')
-        return np.load(newest_calib)
+        calib_extrinsic = np.load(newest_calib)
+        assert calib_extrinsic.shape == (4, 4)
+        return calib_extrinsic
 
 
 

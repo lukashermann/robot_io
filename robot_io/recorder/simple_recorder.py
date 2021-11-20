@@ -10,9 +10,8 @@ from PIL import Image
 import numpy as np
 from robot_io.utils.utils import depth_img_to_uint16
 from robot_io.utils.utils import depth_img_from_uint16
-
-
-from flow_control.rgbd_camera import RGBDCamera
+from robot_io.utils.utils import pos_orn_to_matrix
+from robot_io.cams.camera import Camera as RobotIOCamera
 
 # A logger for this file
 log = logging.getLogger(__name__)
@@ -37,6 +36,9 @@ def count_previous_frames():
 class SimpleRecorder:
     def __init__(self, env, save_dir="", n_digits=6, save_images=False):
         """
+        SimpleRecorder is a recorder to save frames with a simple step function.
+        Recordings can be loaded with load_rec_list/PlaybackEnv.
+
         Arguments:
             save_dir: directory in which to save
             n_digits: zero padding for files
@@ -61,8 +63,6 @@ class SimpleRecorder:
     def process_queue(self):
         """
         Process function for queue.
-        Returns:
-            None
         """
         for msg in self.queue:
             filename, action, obs, rew, done, info = msg
@@ -77,11 +77,9 @@ class SimpleRecorder:
                 Image.fromarray(img).save(img_fn)
 
     def save_info(self):
-        # save info
         info_fn = os.path.join(self.save_dir, "env_info.json")
         env_info = self.env.get_info()
         env_info["time"] = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-        #env_info["T_tcp_cam"] = self.env.cam.get_extrinsic_calibration()
 
         with open(info_fn, 'w') as f_obj:
             json.dump(env_info, f_obj)
@@ -95,13 +93,12 @@ class SimpleRecorder:
         print(f"saved {self.save_dir} w/ length {length}")
 
 
-class PlaybackCamera(RGBDCamera):
+class PlaybackCamera(RobotIOCamera):
     def __init__(self, camera_info, get_image_fn):
         """
         Provide a camera API from a recording.
         """
         self.camera_info = camera_info
-
         self.gripper_extrinsic_calibration = camera_info["gripper_extrinsic_calibration"]
         self.gripper_intrinsics = camera_info["gripper_intrinsics"]
 
@@ -109,11 +106,18 @@ class PlaybackCamera(RGBDCamera):
         # set get_image function
         self.get_image = get_image_fn
 
+        self.resolution = (640, 480)  # warning: must be tuple.
+        self.crop_coords = None
+        self.resize_resolution = None
+
     def get_image(self):
         raise NotImplementedError
 
     def get_intrinsics(self):
         return self.gripper_intrinsics
+
+    def get_extrinsic_calibration(self):
+        return self.gripper_extrinsic_calibration
 
     #def get_projection_matrix(self):
     #    raise NotImplementedError
@@ -125,22 +129,54 @@ class PlaybackCamera(RGBDCamera):
     #    raise NotImplementedError
 
 
-class RecEnv:
-    def __init__(self, file, camera_info):
+def load_camera_info(recording_dir):
+    """
+    Load camera info, in function so that we can just load once.
+    """
+    camera_info = np.load(os.path.join(recording_dir, "camera_info.npz"),
+                          allow_pickle=True)
+    #npz file object -> dict
+    camera_info = dict(list(camera_info.items()))
+    # TODO(max): zero-length npz arrays -> dict
+    camera_info["gripper_intrinsics"] = camera_info["gripper_intrinsics"].item()
+    return camera_info
+
+
+class PlaybackEnv:
+    """
+    PlaybackEnv loads a recorded environment state. It then tries to provide
+    the same interface for accessing state information as a "live" env.
+    This extends to the robot and the camera.
+
+    e.g.
+    env.robot.get_tcp_pose()
+
+    See `load_rec_list` for loading several frames at once.
+    """
+    def __init__(self, dir_or_file, camera_info="load"):
+        if os.path.isfile(dir_or_file):
+            file = dir_or_file
+        else:
+            raise NotImplemented
         self.file = file
+
         # make a copy to avoid having unclosed file buffers
         with np.load(file, allow_pickle=True) as data:
             self.data = dict(data)
 
+        # robot & grippers
         gripper_attrs = dict(width=self._robot_gripper_width)
         self._gripper = type("FakeGripper", (), gripper_attrs)
-
         robot_attrs = dict(get_tcp_pos=self._robot_get_tcp_pos,
                            get_tcp_orn=self._robot_get_tcp_orn,
+                           get_tcp_pos_orn=self._robot_get_tcp_pos_orn,
+                           get_tcp_pose=self._robot_get_tcp_pose,
                            gripper=self._gripper)
         self.robot = type("FakeRobot", (), robot_attrs)
-        self.cam = PlaybackCamera(camera_info, self._cam_get_image)
 
+        if camera_info == "load":
+            camera_info = load_camera_info(os.path.dirname(file))
+        self.cam = PlaybackCamera(camera_info, self._cam_get_image)
 
     def get_action(self):
         action = self.data["action"].item()
@@ -150,7 +186,6 @@ class RecEnv:
         if isinstance(action["motion"][0], tuple):
             action["motion"] = (np.array(action["motion"][0]),
                                 np.array(action["motion"][1]),action["motion"][2])
-
         return action
 
     def get_robot_state(self):
@@ -162,6 +197,13 @@ class RecEnv:
     def _robot_get_tcp_orn(self):
         return self.data["robot_state"].item()["tcp_orn"]
 
+    def _robot_get_tcp_pos_orn(self):
+        tmp = self.data["robot_state"].item()
+        return tmp["tcp_pos"], tmp["tcp_orn"]
+
+    def _robot_get_tcp_pose(self):
+        return pos_orn_to_matrix(*self._robot_get_tcp_pos_orn())
+
     def _robot_gripper_width(self):
         return self.data["robot_state"].item()["gripper_opening_width"]
 
@@ -169,15 +211,14 @@ class RecEnv:
         return self.data["rgb_gripper"], depth_img_from_uint16(self.data["depth_gripper"])
 
 
-def np_to_dict(in_dict):
-    return dict([(k,v.item(0)) for k,v in in_dict.items()])
-
 def load_rec_list(recording_dir):
+    """
+    Loads several pre-recorded demonstration frames.
+
+    Returns:
+        list of PlaybackEnvs
+    """
     # load camera info, done so that we jus thave to load once
-    camera_info = np.load(os.path.join(recording_dir, "camera_info.npz"),
-                          allow_pickle=True)
-    camera_info = np_to_dict(camera_info)
-
+    camera_info = load_camera_info(recording_dir)
     files = sorted(glob(f"{recording_dir}/frame_*.npz"))
-    return [RecEnv(fn, camera_info=camera_info) for fn in files]
-
+    return [PlaybackEnv(fn, camera_info=camera_info) for fn in files]
