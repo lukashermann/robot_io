@@ -6,4 +6,4 @@ threaded_cameras: true
 
 defaults:
   - gripper_cam: framos
-  - static_cam: kinect4_oier
+  - static_cam: kinect4

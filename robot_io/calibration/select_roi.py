@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 
 from robot_io.cams.realsense.realsense import Realsense
-
+from robot_io.cams.kinect4.kinect4 import Kinect4
 
 def select_roi(cam, resolution=None):
     """
@@ -47,5 +47,6 @@ def select_roi(cam, resolution=None):
 
 
 if __name__ == "__main__":
-    cam = Realsense(img_type='rgb_depth')
-    select_roi(cam, resolution=(200, 200))
+    # cam = Realsense(img_type='rgb_depth')
+    cam = Kinect4(resolution='720p')
+    select_roi(cam, resolution=(300, 300))

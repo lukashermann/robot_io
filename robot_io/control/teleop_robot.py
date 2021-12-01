@@ -8,8 +8,8 @@ from robot_io.utils.utils import FpsController
 def main(cfg):
 
     robot = hydra.utils.instantiate(cfg.robot)
-    input_device = hydra.utils.instantiate(cfg.input, robot=robot)
     env = hydra.utils.instantiate(cfg.env, robot=robot)
+    input_device = hydra.utils.instantiate(cfg.input, robot=robot)
 
     fps = FpsController(cfg.freq)
 
@@ -19,7 +19,7 @@ def main(cfg):
     while True:
         action, record_info = input_device.get_action()
         obs, _, _, _ = env.step(action)
-
+        robot.visualize_joint_states()
         recorder.step(action, obs, record_info)
         env.render()
         fps.step()

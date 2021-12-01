@@ -33,7 +33,11 @@ class VrInput:
     This class processes the input of the vr controller for teleoperating a real franka emika panda robot.
     """
 
-    def __init__(self, robot, workspace_limits, quaternion_convention='wxyz', record_button_queue_len=60):
+    def __init__(self, robot,
+                 workspace_limits,
+                 quaternion_convention='wxyz',
+                 record_button_queue_len=60,
+                 tracking_error_threshold=0.03):
         """
         :param workspace_limits: workspace bounding box [[x_min, y_min, z_min], [x_max, y_max, z_max]]
         :param robot: instance of PandaArm class from panda_robot repository
@@ -53,6 +57,8 @@ class VrInput:
         self.vr_coord_rotation = np.eye(4)
         self.workspace_limits = workspace_limits
         self.change_quaternion_convention = False
+        self.tracking_error_threshold = tracking_error_threshold
+        self.has_tracking_error = False
         assert quaternion_convention in ('wxyz', 'xyzw')
         if quaternion_convention == 'wxyz':
             self.change_quaternion_convention = True
@@ -100,13 +106,25 @@ class VrInput:
                     return self.prev_action, record_info
                 # reset button pressed
                 elif self._dead_mans_switch_triggered(event):
+                    self.has_tracking_error = False
+                    self.prev_action = None
                     self._reset_vr_coord_offset(vr_action)
-
+                elif self.has_tracking_error:
+                    return self.prev_action, record_info
                 # transform pose from vr coord system to robot base frame
                 robot_action = self._transform_action_vr_to_robot_base(vr_action)
                 robot_action = {"motion": robot_action, "ref": "abs"}
+
+                if self._check_tracking_error(robot_action):
+                    self.has_tracking_error = True
+                    log.error(f"Tracking error: {self.prev_action['motion'][0]}, {robot_action['motion'][0]}")
+                    return self.prev_action, record_info
+
                 self.prev_action = robot_action
         return self.prev_action, record_info
+
+    def _check_tracking_error(self, current_action):
+        return self.prev_action is not None and np.any(np.abs(current_action["motion"][0] - self.prev_action["motion"][0]) > self.tracking_error_threshold)
 
     def _get_record_info(self, event):
         record_button_hold = False

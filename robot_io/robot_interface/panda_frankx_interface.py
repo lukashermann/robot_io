@@ -102,6 +102,7 @@ class PandaFrankXInterface(BaseRobotInterface):
         # internally, FrankX expects orientations with the z-axis facing up, but to be consistent with other
         # robot interfaces we transform the TCP orientation such that the z-axis faces down.
         self.NE_T_EE = self.EE_T_NE = Affine(0, 0, 0, 0, 0, np.pi)
+        self.wrench_frame_conv = np.eye(6) # np.diag([1, -1, -1, 1, -1, -1])
         self.reference_type = ReferenceType.ABSOLUTE
         super().__init__()
 
@@ -289,7 +290,7 @@ class PandaFrankXInterface(BaseRobotInterface):
                  "tcp_orn": orn,
                  "joint_positions": np.array(_state.q),
                  "gripper_opening_width": self.gripper.width(),
-                 "force_torque": np.array(_state.K_F_ext_hat_K),
+                 "force_torque": self.wrench_frame_conv @ np.array(_state.K_F_ext_hat_K),
                  "contact": _state.cartesian_contact}
         return state
 
@@ -347,26 +348,26 @@ class PandaFrankXInterface(BaseRobotInterface):
         cv2.waitKey(1)
 
 
-
-
 @hydra.main(config_path="../conf", config_name="panda_teleop.yaml")
 def main(cfg):
     robot = hydra.utils.instantiate(cfg.robot)
-    # robot.move_to_neutral()
-    time.sleep(1)
-    print(robot.get_state()["gripper_opening_width"])
-    time.sleep(2)
-    robot.open_gripper()
-    time.sleep(1)
-    exit()
-    pos, orn = robot.get_tcp_pos_orn()
-    pos[0] += 0.2
-    pos[2] -= 0.1
-    # pos[2] -= 0.05
-    print("move")
-    robot.move_cart_pos_abs_ptp(pos, orn)
-    time.sleep(5)
-    print("done!")
+    robot.move_to_neutral()
+
+    while 1:
+        print(robot.get_state()["force_torque"])
+    # print(robot.get_state()["gripper_opening_width"])
+    # time.sleep(2)
+    # robot.open_gripper()
+    # time.sleep(1)
+    # exit()
+    # pos, orn = robot.get_tcp_pos_orn()
+    # pos[0] += 0.2
+    # pos[2] -= 0.1
+    # # pos[2] -= 0.05
+    # print("move")
+    # robot.move_cart_pos_abs_ptp(pos, orn)
+    # time.sleep(5)
+    # print("done!")
 
 
 if __name__ == "__main__":
