@@ -10,6 +10,6 @@ defaults:
   - robot: panda_frankx_interface
   - input: vr_input
   - recorder: vr_recorder
-  - cams: camera_manager
+  - cams: no_cameras
   - override hydra/job_logging: colorlog
   - override hydra/hydra_logging: colorlog

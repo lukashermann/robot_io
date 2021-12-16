@@ -12,7 +12,7 @@ from frankx import Affine, JointMotion, LinearMotion, Robot, PathMotion, Waypoin
 from frankx.gripper import Gripper
 from _frankx import NetworkException
 from robot_io.utils.utils import np_quat_to_scipy_quat, pos_orn_to_matrix, quat_to_euler, euler_to_quat, \
-    scipy_quat_to_np_quat, orn_to_matrix, matrix_to_orn, timeit
+    scipy_quat_to_np_quat, orn_to_matrix, matrix_to_orn, timeit, get_git_root
 import logging
 log = logging.getLogger(__name__)
 
@@ -36,6 +36,7 @@ class ReferenceType(Enum):
 class PandaFrankXInterface(BaseRobotInterface):
     def __init__(self,
                  fci_ip,
+                 urdf_path,
                  velocity_rel,
                  acceleration_rel,
                  jerk_rel,
@@ -52,7 +53,11 @@ class PandaFrankXInterface(BaseRobotInterface):
                  franka_joint_impedance,
                  translational_stiffness,
                  rotational_stiffness,
+                 damping_xi,
                  joint_stiffness,
+                 use_nullspace,
+                 nullspace_stiffness,
+                 q_d_nullspace,
                  gripper_speed,
                  gripper_force,
                  gripper_timeout,
@@ -65,10 +70,18 @@ class PandaFrankXInterface(BaseRobotInterface):
                  limit_control_5_dof):
         self.name = "panda"
         self.neutral_pose = neutral_pose
+
+        # impedance
         self.use_impedance = use_impedance
         self.joint_stiffness = joint_stiffness
         self.rotational_stiffness = rotational_stiffness
         self.translational_stiffness = translational_stiffness
+        self.damping_xi = damping_xi
+        # nullspace control for impedance mode
+        self.use_nullspace = use_nullspace
+        self.nullspace_stiffness = nullspace_stiffness
+        self.q_d_nullspace = q_d_nullspace
+
         self.ll = np.array(ll)
         self.ul = np.array(ul)
         self.workspace_limits = workspace_limits
@@ -80,7 +93,7 @@ class PandaFrankXInterface(BaseRobotInterface):
         self.relative_rot_clip_threshold = relative_rot_clip_threshold
         self.limit_control_5_dof = limit_control_5_dof
         self.desired_pos, self.desired_orn = None, None
-        self.robot = Robot(fci_ip)
+        self.robot = Robot(fci_ip, urdf_path=(get_git_root(__file__) / urdf_path).as_posix())
         self.robot.recover_from_errors()
         self.robot.set_default_behavior()
         self.set_collision_behavior(contact_torque_threshold,
@@ -261,12 +274,15 @@ class PandaFrankXInterface(BaseRobotInterface):
     def _frankx_async_impedance_motion(self, target_pos, target_orn):
         target_pose = to_affine(target_pos, target_orn) * self.NE_T_EE
         if self.current_motion is not None and isinstance(self.current_motion, ImpedanceMotion):
-            self.current_motion.target = target_pose
+            self.current_motion.set_target(target_pose)
         else:
-            if self.current_motion is not None and not isinstance(self.current_motion, WaypointMotion):
+            if self.current_motion is not None and not isinstance(self.current_motion, ImpedanceMotion):
                 self.abort_motion()
-            self.current_motion = ImpedanceMotion(self.translational_stiffness, self.rotational_stiffness)
-            self.current_motion.target = target_pose
+            if self.use_nullspace:
+                self.current_motion = ImpedanceMotion(self.translational_stiffness, self.rotational_stiffness, self.nullspace_stiffness, self.q_d_nullspace, self.damping_xi)
+            else:
+                self.current_motion = ImpedanceMotion(self.translational_stiffness, self.rotational_stiffness)
+            self.current_motion.set_target(target_pose)
             self.motion_thread = self.robot.move_async(self.current_motion)
 
     def _frankx_async_lin_motion(self, target_pos, target_orn):
@@ -352,9 +368,10 @@ class PandaFrankXInterface(BaseRobotInterface):
 def main(cfg):
     robot = hydra.utils.instantiate(cfg.robot)
     robot.move_to_neutral()
-
-    while 1:
-        print(robot.get_state()["force_torque"])
+    robot.close_gripper()
+    time.sleep(1)
+    print(robot.get_tcp_pose())
+    exit()
     # print(robot.get_state()["gripper_opening_width"])
     # time.sleep(2)
     # robot.open_gripper()

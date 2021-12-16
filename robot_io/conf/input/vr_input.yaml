@@ -4,3 +4,4 @@ robot: ???
 quaternion_convention: 'wxyz'
 record_button_queue_len: 60
 workspace_limits: ${robot.workspace_limits}
+tracking_error_threshold: 0.05
