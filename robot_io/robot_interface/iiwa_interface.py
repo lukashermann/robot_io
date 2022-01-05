@@ -40,7 +40,8 @@ class IIWAInterface(BaseRobotInterface):
                  cartesian_acc=300,
                  workspace_limits=((0.3, -0.3, 0.2), (0.6, 0.3, 0.4)),
                  tcp_name=TCP_SHORT_FINGER,
-                 neutral_pose=(0.5, 0, 0.25, pi, 0, pi / 2)):
+                 neutral_pose=(0.5, 0, 0.25, pi, 0, pi / 2),
+                 open_gripper=True):
         """
         :param host: "localhost"
         :param port: default port is 50100
@@ -66,8 +67,9 @@ class IIWAInterface(BaseRobotInterface):
                             workspace_limits, tcp_name)
         self.neutral_pose = np.array(neutral_pose)
         self.gripper = WSG50Controller()
-        self.gripper_state = GripperState.OPEN
-        self.gripper.open_gripper()
+        if open_gripper:
+            self.gripper_state = GripperState.OPEN
+            self.gripper.open_gripper()
         super().__init__()
 
     def move_to_neutral(self):

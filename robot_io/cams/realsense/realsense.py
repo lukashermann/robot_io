@@ -84,7 +84,13 @@ class Realsense(Camera):
     def set_parameters(self, params):
         if params is not None:
             for key, value in params.items():
-                self.color_sensor.set_option(getattr(rs.option, key), value)
+                print(f'Set option {key}: {value}')
+                for x in range(20): # Do multiple attempts
+                    try:
+                        self.color_sensor.set_option(getattr(rs.option, key), value)
+                        break
+                    except RuntimeError:
+                        pass
 
     def get_intrinsics(self):
         color_profile = rs.video_stream_profile(self.profile.get_stream(rs.stream.color))

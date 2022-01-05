@@ -14,13 +14,13 @@ def main(cfg):
     fps = FpsController(cfg.freq)
 
     obs = env.reset()
-    recorder = hydra.utils.instantiate(cfg.recorder)
+    # recorder = hydra.utils.instantiate(cfg.recorder)
     t1 = time.time()
     while True:
         action, record_info = input_device.get_action()
         obs, _, _, _ = env.step(action)
-        robot.visualize_joint_states()
-        recorder.step(action, obs, record_info)
+        # robot.visualize_joint_states()
+        # recorder.step(action, obs, record_info)
         env.render()
         fps.step()
         # print(1 / (time.time() - t1))

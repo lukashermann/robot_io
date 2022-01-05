@@ -44,6 +44,8 @@ def xyz_to_zyx(orn):
     """xyz euler angles to zyx euler"""
     return orn[::-1]
 
+def quat_to_rotvec(quat):
+    return R.from_quat(quat).as_rotvec()
 
 def pos_orn_to_matrix(pos, orn):
     """
@@ -57,6 +59,8 @@ def pos_orn_to_matrix(pos, orn):
     if isinstance(orn, np.quaternion):
         orn = np_quat_to_scipy_quat(orn)
         mat[:3, :3] = R.from_quat(orn).as_matrix()
+    elif isinstance(orn, R):
+        mat[:3, :3] = orn.as_matrix()
     elif len(orn) == 4:
         mat[:3, :3] = R.from_quat(orn).as_matrix()
     elif len(orn) == 3:
@@ -70,6 +74,8 @@ def orn_to_matrix(orn):
     if isinstance(orn, np.quaternion):
         orn = np_quat_to_scipy_quat(orn)
         mat[:3, :3] = R.from_quat(orn).as_matrix()
+    elif isinstance(orn, R):
+        return orn.as_matrix()
     elif len(orn) == 4:
         mat[:3, :3] = R.from_quat(orn).as_matrix()
     elif len(orn) == 3:

@@ -19,7 +19,7 @@ class RobotEnv(gym.Env):
         self.robot = robot
         self.workspace_limits = workspace_limits
 
-        self.camera_manager = hydra.utils.instantiate(camera_manager_cfg, robot_name=robot.name)
+        self.camera_manager = hydra.utils.instantiate(camera_manager_cfg) #, robot_name=robot.name)
 
     def reset(self, target_pos=None, target_orn=None):
         """

@@ -1,3 +1,4 @@
+from os import makedev
 import hydra.utils
 import numpy as np
 import cv2
@@ -55,9 +56,9 @@ class ArucoDetector:
             rvec, tvec, _ = aruco.estimatePoseSingleMarkers(corners, self.marker_size, self.camera_matrix, self.dist_coeffs)
             # (rvec-tvec).any() # get rid of that nasty numpy value array error
 
+            rgb = rgb[:,:,::-1]
             # draw axis for the aruco markers
             aruco.drawAxis(rgb, self.camera_matrix, self.dist_coeffs, rvec[0], tvec[0], 0.1)
-
             # draw a square around the markers
             aruco.drawDetectedMarkers(rgb, corners)
 
@@ -108,6 +109,45 @@ class ArucoDetector:
         T_cam_marker[:3, 3] = tvec
         T_cam_marker[:3, :3] = r.as_matrix()
         return T_cam_marker
+
+    def estimate_poses(self, rgb=None, markers=None, show_window=True):
+        """Try estimating the pose of all ids contained in the 'markers' set.
+           If 'markers' is None, will return dict of poses of all found markers.
+           If Id from 'markers' cannot be found, will return None for that Id in the dict.
+        """
+        if rgb is None:
+            rgb, _ = self.cam.get_image()
+        detected_markers = self.detect_markers(rgb)
+
+        poses = {id: None for id in markers} if markers is not None else {} 
+        for x, (marker_id, corners) in enumerate(detected_markers.items()):
+            if markers is None or marker_id in markers:
+                # estimate pose of each marker and return the values
+                # rvet and tvec-different from camera coefficients
+                rvec, tvec, _ = aruco.estimatePoseSingleMarkers(corners, self.marker_size, self.camera_matrix, self.dist_coeffs)
+                # (rvec-tvec).any() # get rid of that nasty numpy value array error
+
+                r = R.from_rotvec(rvec[0])
+                T_cam_marker = np.eye(4)
+                T_cam_marker[:3, 3]  = tvec
+                T_cam_marker[:3, :3] = r.as_matrix()
+                poses[marker_id] = T_cam_marker
+
+                if self.visualize:
+                    cv2.putText(rgb, f"Id: {marker_id}" , (0, 64 + x * 30), FONT, 1, (0, 255, 0), 2, cv2.LINE_AA)
+                    print(f'Marker detected with marker_id {marker_id}')
+                    # draw axis for the aruco markers
+                    aruco.drawAxis(rgb, self.camera_matrix, self.dist_coeffs, rvec[0], tvec[0], 0.1)
+
+                    # draw a square around the markers
+                    aruco.drawDetectedMarkers(rgb, corners)
+
+        if self.visualize and show_window:
+            cv2.imshow("win2", rgb[:, :, ::-1])
+            cv2.waitKey(1)
+
+        return poses
+
 
 
 if __name__ == "__main__":
