@@ -7,10 +7,32 @@ import numpy as np
 from robot_io.utils.utils import euler_to_quat
 
 
+# Enum's are not interpreted as numerical values automatically, as such
+# we don't want to have them in actions, for this use Enum.value.
 class GripperState(Enum):
     OPEN = 1
     CLOSED = -1
 
+class GripperInterface:
+    @staticmethod
+    def to_gripper_state(gs):
+        if gs == "open":
+            return GripperState.OPEN
+        elif gs == "closed":
+            return GripperState.CLOSED
+        elif gs in (GripperState.OPEN, GripperState.CLOSED):
+            return gs
+        else:
+            raise ValueError(f"Invalid gripper state {gs} must be GripperState enum")
+
+    @staticmethod
+    def toggle(gs):
+        if gs == GripperState.OPEN:
+            return GripperState.CLOSED
+        elif gs == GripperState.CLOSED:
+            return GripperState.OPEN
+        else:
+            raise ValueError(f"gripper state must be GripperState Enum was {gs}.")
 
 class BaseRobotInterface:
     """

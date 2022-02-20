@@ -4,10 +4,8 @@ from enum import Enum
 import numpy as np
 import pygame
 
-
-class GripperState(Enum):
-    OPEN = 1
-    CLOSED = -1
+from robot_io.robot_interface.base_robot_interface import GripperState
+from robot_io.robot_interface.base_robot_interface import GripperInterface as GI
 
 
 class KeyboardInput:
@@ -19,16 +17,18 @@ class KeyboardInput:
 
     def __init__(self, act_type="continuous", initial_gripper_state='open', dv=0.01, drot=0.2, mode='5dof', **kwargs):
         assert act_type == 'continuous'
-        assert initial_gripper_state in ('open', 'closed')
         assert mode in ('5dof', '7dof')
         self.pressed_keys = []
         self.mode = mode
+        self.done = False
         self.movement_keys = {ord('w'): (dv, 0, 0, 0, 0, 0, 0),
                               ord('s'): (-dv, 0, 0, 0, 0, 0, 0),
                               ord('a'): (0, -dv, 0, 0, 0, 0, 0),
                               ord('d'): (0, dv, 0, 0, 0, 0, 0),
                               ord('x'): (0, 0, dv, 0, 0, 0, 0),
                               ord('z'): (0, 0, -dv, 0, 0, 0, 0),
+                              ord('i'): (0, 0, dv, 0, 0, 0, 0),
+                              ord('k'): (0, 0, -dv, 0, 0, 0, 0),
                               ord('e'): (0, 0, 0, 0, 0, drot, 0),
                               ord('q'): (0, 0, 0, 0, 0, -drot, 0),
                               }
@@ -39,18 +39,24 @@ class KeyboardInput:
             self.movement_keys[1073741903] = (0, 0, 0, drot, 0, 0, 0)
         self.gripper_key = ord('\t')
         self.prev_gripper_key_pressed = False
-        if initial_gripper_state == 'open':
-            self.gripper_state = GripperState.OPEN
-        else:
-            self.gripper_state = GripperState.CLOSED
+
+        # convert str or GripperState to GripperState
+        self.gripper_state = GI.to_gripper_state(initial_gripper_state)
 
         # init pygame stuff
-        screen = pygame.display.set_mode((256, 256))
-        icon_fn = os.path.join(os.path.dirname(__file__), "assets/keyboard_icon.png")
+        icon_fn = os.path.join(os.path.dirname(__file__),"assets/keyboard_icon.png")
         image = pygame.image.load(icon_fn)
+
+        screen = pygame.display.set_mode(image.get_size())
         screen.fill((255, 255, 255))
         screen.blit(image, (0, 0))
         pygame.display.update()
+
+        self.reset()
+
+    def reset(self):
+        self.done = False
+        self.pressed_keys = []
 
     def get_action(self):
 
@@ -60,6 +66,9 @@ class KeyboardInput:
         record_info = None
 
         return action, record_info
+
+    def get_done(self):
+        return self.done
 
     def handle_keyboard_events(self):
         """
@@ -72,14 +81,13 @@ class KeyboardInput:
             if event.type == pygame.KEYDOWN:
                 if event.key in self.movement_keys:
                     self.pressed_keys.append(event.key)
-                elif event.key == 27:
-                    running = False
+                elif event.key == 27:  # escape
+                    self.done = True
                 elif event.key == self.gripper_key and not self.prev_gripper_key_pressed:
                     self.prev_gripper_key_pressed = True
-                    if self.gripper_state == GripperState.OPEN:
-                        self.gripper_state = GripperState.CLOSED
-                    elif self.gripper_state == GripperState.CLOSED:
-                        self.gripper_state = GripperState.OPEN
+                    self.gripper_state = GI.toggle(self.gripper_state)
+                elif event.key == ord('h'):
+                    self.print_help()
 
             elif event.type == pygame.KEYUP:
                 if event.key in self.movement_keys:
@@ -95,12 +103,22 @@ class KeyboardInput:
         action[-1] = self.gripper_state.value
 
         assert action.shape == (7,)
+
+        if self.mode == "5dof":
+            action = [*action[0:3], *action[5:7]]
+
         return action
 
     def print_all_events(self):
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN:
                 print(event)
+
+    def print_help(self):
+        print("Keyboard Input")
+        print("RL/FB: WASDA")
+        print("XZ: Up/Down")
+        print("Rotation: Q/E")
 
 
 if __name__ == "__main__":
