@@ -1,6 +1,5 @@
 import os
 import time
-from pathlib import Path
 
 import numpy as np
 import multiprocessing as mp
@@ -49,8 +48,11 @@ class VrRecorder:
         self.n_digits = n_digits
         self.delete_thread = None
         self.dead_man_switch_was_down = False
+        self.ep_start_end_ids = []
     
     def step(self, action, obs, record_info):
+        if record_info is None:
+            return
         if record_info["dead_man_switch_triggered"]:
             self.dead_man_switch_was_down = True
         if record_info["trigger_release"] and not self.recording and not self.is_deleting:
@@ -60,8 +62,10 @@ class VrRecorder:
                 self.recording = True
                 self.tts.say("start recording")
                 self.current_episode_filenames = []
+                self.ep_start_end_ids.append([self.save_frame_cnt])
         elif record_info["trigger_release"] and self.recording:
             self.recording = False
+            self.ep_start_end_ids[-1].append(self.save_frame_cnt)
             self.save(action, obs, True)
             self.tts.say("finish recording")
         if record_info["hold_event"]:
@@ -79,6 +83,8 @@ class VrRecorder:
     def delete_last_episode(self):
         self.delete_thread = threading.Thread(target=self._delete_last_episode, daemon=True)
         self.delete_thread.start()
+        self.ep_start_end_ids = self.ep_start_end_ids[:-1]
+        np.save("ep_start_end_ids.npy", self.ep_start_end_ids)
 
     def _delete_last_episode(self):
         log.info("Delete episode")
@@ -98,6 +104,8 @@ class VrRecorder:
         self.current_episode_filenames.append(filename)
         self.save_frame_cnt += 1
         self.queue.put((filename, action, obs, done))
+        if done:
+            np.save("ep_start_end_ids.npy", self.ep_start_end_ids)
 
     def process_queue(self):
         """

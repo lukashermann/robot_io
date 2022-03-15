@@ -4,6 +4,8 @@ import cv2
 import hydra
 import numpy as np
 
+from robot_io.calibration.calibration import visualize_calibration_gripper_cam
+
 
 def get_point_in_world_frame(cam, robot, T_tcp_cam, clicked_point, depth):
     point_cam_frame = cam.deproject(clicked_point, depth, homogeneous=True)
@@ -20,6 +22,9 @@ def main(cfg):
     cam = hydra.utils.instantiate(cfg.cam)
     robot = hydra.utils.instantiate(cfg.robot)
     T_tcp_cam = cam.get_extrinsic_calibration(robot.name)
+
+    visualize_calibration_gripper_cam(cam, T_tcp_cam)
+    exit()
     robot.move_to_neutral()
     pos, orn = robot.get_tcp_pos_orn()
     clicked_point = None

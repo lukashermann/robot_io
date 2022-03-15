@@ -1,6 +1,7 @@
 save_dir: /tmp/
 load_dir: ???
-freq: 30
+freq: 15
+use_rel_actions: true
 
 hydra:
   run:

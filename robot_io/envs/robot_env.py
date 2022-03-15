@@ -21,7 +21,7 @@ class RobotEnv(gym.Env):
 
         self.camera_manager = hydra.utils.instantiate(camera_manager_cfg, robot_name=robot.name)
 
-    def reset(self, target_pos=None, target_orn=None):
+    def reset(self, target_pos=None, target_orn=None, gripper_state="open"):
         """
         Reset robot to neutral position.
         """
@@ -30,6 +30,12 @@ class RobotEnv(gym.Env):
             self.robot.move_cart_pos_abs_ptp(target_pos, target_orn)
         else:
             self.robot.move_to_neutral()
+        if gripper_state == "open":
+            self.robot.open_gripper(blocking=True)
+        elif gripper_state == "open":
+            self.robot.close_gripper(blocking=True)
+        else:
+            raise ValueError
         return self._get_obs()
 
     def _get_obs(self):

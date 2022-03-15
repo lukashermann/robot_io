@@ -1,4 +1,6 @@
 from enum import Enum
+
+import cv2
 from scipy.spatial.transform.rotation import Rotation as R
 import numpy as np
 
@@ -15,8 +17,9 @@ class BaseRobotInterface:
     Generic interface for robot control.
     Not all methods must be implemented.
     """
-    def __init__(self, *args, **kwargs):
-        pass
+    def __init__(self, ll, ul, *args, **kwargs):
+        self.ll = np.array(ll)
+        self.ul = np.array(ul)
 
     def move_to_neutral(self):
         """
@@ -150,3 +153,19 @@ class BaseRobotInterface:
         curr_pos = self.get_state()['joint_positions']
         offset = np.sum(np.abs((np.array(target_state) - curr_pos)))
         return offset < threshold
+
+    def visualize_joint_states(self):
+        canvas = np.ones((300, 300, 3))
+        joint_states = self.get_state()["joint_positions"]
+        left = 10
+        right = 290
+        width = right - left
+        height = 30
+        y = 10
+        for i, (l, q, u) in enumerate(zip(self.ll, joint_states, self.ul)):
+            cv2.rectangle(canvas, [left, y], [right, y + height], [0,0,0], thickness=2)
+            bar_pos = int(left + width * (q - l) / (u - l))
+            cv2.line(canvas, [bar_pos, y], [bar_pos, y + height], thickness=5, color=[0, 0, 1])
+            y += height + 10
+        cv2.imshow("joint_positions", canvas)
+        cv2.waitKey(1)

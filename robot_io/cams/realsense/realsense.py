@@ -1,7 +1,8 @@
 ## License: Apache 2.0. See LICENSE file in root directory.
 ## Copyright(c) 2017 Intel Corporation. All Rights Reserved.
 
-# Import Numpy for easy array manipulation
+import time
+
 import hydra
 import numpy as np
 # Import the library
@@ -31,12 +32,20 @@ class Realsense(Camera):
         # Configure depth and color streams
         self.pipeline = rs.pipeline()
         config = rs.config()
-
         config.enable_stream(rs.stream.depth, resolution[0], resolution[1], rs.format.z16, fps)
         config.enable_stream(rs.stream.color, resolution[0], resolution[1], rs.format.rgb8, fps)
 
         # Start streaming
-        self.profile = self.pipeline.start(config)
+        for i in range(5):
+            try:
+                self.profile = self.pipeline.start(config)
+                break
+            except RuntimeError as e:
+                print(e)
+                print("Retrying")
+                time.sleep(2)
+        else:
+            raise RuntimeError
         self.color_sensor = self.profile.get_device().first_color_sensor()
         self.depth_scale = None
         if img_type == 'rgb_depth':
@@ -54,6 +63,7 @@ class Realsense(Camera):
 
     def __del__(self):
         # Stop streaming
+        print("exit realsense")
         self.pipeline.stop()
 
     def _get_image(self):
@@ -63,8 +73,8 @@ class Realsense(Camera):
             try:
                 frames = self.pipeline.wait_for_frames()
                 break
-            except RuntimeError:
-                print("Frame didn't arrive within 5000")
+            except RuntimeError as e:
+                print(e)
 
         # Align the depth frame to color frame
         aligned_frames = self.align.process(frames)

@@ -1,7 +1,8 @@
+import multiprocessing
 import time
 import logging
 import threading
-
+from multiprocessing import Process
 import hydra
 import numpy as np
 
@@ -51,11 +52,6 @@ class ThreadedCamera:
     def deproject(self, point, depth, homogeneous=False):
         return self._camera_thread.camera.deproject(point, depth, homogeneous)
 
-    def __del__(self):
-        log.info("Closing camera.")
-        self._camera_thread.flag_exit = True
-        self._camera_thread.join()
-
 
 class _CameraThread(threading.Thread):
     def __init__(self, camera_cfg):
@@ -71,6 +67,7 @@ class _CameraThread(threading.Thread):
         while not self.flag_exit:
             self.rgb, self.depth = self.camera.get_image()
             self.fps_controller.step()
+        log.info("Exit camera thread.")
 
 
 if __name__ == "__main__":

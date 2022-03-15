@@ -1,8 +1,26 @@
+import signal
+import sys
+import time
+from functools import partial
+
 import cv2
 import hydra
 import numpy as np
 
 from robot_io.cams.threaded_camera import ThreadedCamera
+
+
+def destroy_on_signal(self, sig, frame):
+    # Stop streaming
+    print(f"Received signal {signal.Signals(sig).name}. Exit cameras.")
+    if isinstance(self.gripper_cam, ThreadedCamera):
+        self.gripper_cam._camera_thread.flag_exit = True
+        self.gripper_cam._camera_thread.join()
+    if isinstance(self.static_cam, ThreadedCamera):
+        self.static_cam._camera_thread.flag_exit = True
+        self.static_cam._camera_thread.join()
+    print("done")
+    sys.exit()
 
 
 class CameraManager:
@@ -26,6 +44,7 @@ class CameraManager:
         self.robot_name = robot_name
         if robot_name is not None:
             self.save_calibration()
+        signal.signal(signal.SIGINT, partial(destroy_on_signal, self))
 
     def get_images(self):
         obs = {}
@@ -48,13 +67,17 @@ class CameraManager:
         if self.static_cam is not None:
             camera_info["static_extrinsic_calibration"] = self.static_cam.get_extrinsic_calibration(self.robot_name)
             camera_info["static_intrinsics"] = self.static_cam.get_intrinsics()
-        np.savez("camera_info.npz", **camera_info)
+        if len(camera_info):
+            np.savez("camera_info.npz", **camera_info)
 
     def normalize_depth(self, img):
         img_mask = img == 0
-        istats = (np.min(img[img > 0]), np.max(img))
-        imrange = (img.astype("float32") - istats[0]) / (istats[1] - istats[0])
+        # we do not take the max because of outliers (wrong measurements)
+        istats = (np.min(img[img > 0]), np.percentile(img, 95))
+
+        imrange = (np.clip(img.astype("float32"), istats[0], istats[1]) - istats[0]) / (istats[1] - istats[0])
         imrange[img_mask] = 0
+
         imrange = 255.0 * imrange
         imsz = imrange.shape
         nchan = 1
@@ -80,6 +103,8 @@ if __name__ == "__main__":
     from omegaconf import OmegaConf
     hydra.initialize("../conf/cams")
     cfg = hydra.compose("camera_manager.yaml")
-    cfg.use_static_cam = False
-    cfg.threaded_cameras = False
-    cam_manager = hydra.utils.instantiate(cfg, robot_name="panda")
+    cam_manager = hydra.utils.instantiate(cfg)
+    while True:
+        cam_manager.get_images()
+        cam_manager.render()
+        time.sleep(0.05)

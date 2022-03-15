@@ -1,4 +1,5 @@
 import math
+from enum import Enum
 from pathlib import Path
 
 import git
@@ -18,6 +19,18 @@ def z_angle_between(a, b):
     :return: signed angle between vectors around z axis (right handed rule)
     """
     return math.atan2(b[1], b[0]) - math.atan2(a[1], a[0])
+
+
+def angle_between(v1, v2):
+    """Returns the angle in radians between vectors 'v1' and 'v2'"""
+    v1_u = v1 / np.linalg.norm(v1)
+    v2_u = v2 / np.linalg.norm(v2)
+    return np.arccos(np.clip(v1_u @ v2_u, -1.0, 1.0))
+
+
+def angle_between_angles(a, b):
+    diff = b - a
+    return (diff + np.pi) % (2 * np.pi) - np.pi
 
 
 def scipy_quat_to_np_quat(quat):
@@ -95,6 +108,32 @@ def matrix_to_pos_orn(mat):
     return pos, orn
 
 
+def to_world_frame(rel_action_pos, rel_action_orn, tcp_orn):
+    T_world_tcp_old = orn_to_matrix(tcp_orn)
+    pos_w_rel = T_world_tcp_old[:3, :3] @ rel_action_pos
+    T_tcp_new_tcp_old = orn_to_matrix(rel_action_orn)
+
+    T_world_tcp_new = T_world_tcp_old @ np.linalg.inv(T_tcp_new_tcp_old)
+    orn_w_new = matrix_to_orn(T_world_tcp_new)
+    orn_w_new = quat_to_euler(orn_w_new)
+    orn_w_rel = tcp_orn - orn_w_new
+    orn_w_rel = np.where(orn_w_rel < -np.pi, orn_w_rel + 2 * np.pi, orn_w_rel)
+    orn_w_rel = np.where(orn_w_rel > np.pi, orn_w_rel - 2 * np.pi, orn_w_rel)
+    return pos_w_rel, orn_w_rel
+
+
+def to_tcp_frame(rel_action_pos, rel_action_orn, tcp_orn):
+    T_tcp_world = np.linalg.inv(orn_to_matrix(tcp_orn))
+    pos_tcp_rel = T_tcp_world @ rel_action_pos
+    new_orn_w = tcp_orn + rel_action_orn
+    T_world_tcp = orn_to_matrix(tcp_orn)
+    T_world_tcp_new = orn_to_matrix(new_orn_w)
+    T_tcp_new_tcp_old = np.linalg.inv(T_world_tcp_new) @ T_world_tcp
+    orn_tcp_rel = quat_to_euler(matrix_to_orn(T_tcp_new_tcp_old))
+    orn_tcp_rel = np.where(orn_tcp_rel < -np.pi, orn_tcp_rel + 2 * np.pi, orn_tcp_rel)
+    orn_tcp_rel = np.where(orn_tcp_rel > np.pi, orn_tcp_rel - 2 * np.pi, orn_tcp_rel)
+    return pos_tcp_rel, orn_tcp_rel
+
 import logging
 
 log = logging.getLogger(__name__)
@@ -165,3 +204,8 @@ def depth_img_to_uint16(depth_img, max_depth=4):
 def depth_img_from_uint16(depth_img, max_depth=4):
     return depth_img.astype('float') / (2 ** 16 - 1) * max_depth
 
+
+class ReferenceType(Enum):
+    ABSOLUTE = 0
+    RELATIVE = 1
+    JOINT = 2

@@ -3,7 +3,7 @@ SpaceMouse input class
 """
 import time
 import numpy as np
-from robot_io.utils.utils import euler_to_quat
+from robot_io.utils.utils import euler_to_quat, timeit
 
 try:
     import spnav
@@ -17,10 +17,11 @@ except OSError as err:
 GRIPPER_CLOSING_ACTION = -1
 GRIPPER_OPENING_ACTION = 1
 
+
 class SpaceMouse:
     """SpaceMouse input class"""
     def __init__(self, act_type='continuous', sensitivity=100, mode="5dof", initial_gripper_state='open',
-                 dv=0.01, drot=0.2, **kwargs):
+                 dv=0.01, drot=0.2, reference_frame='tcp', **kwargs):
         """
 
         :param act_type: ['continuous', 'discrete'] specifies action output
@@ -38,7 +39,9 @@ class SpaceMouse:
         print("Opening SpaceNav: done")
         assert mode in ['5dof', '7dof']
         assert initial_gripper_state in ['open', 'closed']
+        assert reference_frame in ["tcp", "world"]
         self.mode = mode
+        self.reference_frame = reference_frame
         self._gripper_state = 1 if initial_gripper_state == 'open' else -1
         assert act_type in ['continuous', 'discrete']
         self.act_type = act_type
@@ -65,7 +68,7 @@ class SpaceMouse:
             sm_action = self.handle_mouse_events_7dof()
             sm_action = np.array(sm_action)
             sm_controller_pos = sm_action[0:3] * self.dv
-            sm_controller_orn = euler_to_quat(np.array([sm_action[3] * self.drot, sm_action[4] * self.drot, sm_action[5] * self.drot]))
+            sm_controller_orn = np.array([sm_action[3] * self.drot, sm_action[4] * self.drot, sm_action[5] * self.drot])
             gripper_action = sm_action[6]
 
         else:
@@ -108,9 +111,14 @@ class SpaceMouse:
         if event is not None:
             if event.ev_type == spnav.SPNAV_EVENT_MOTION:
                 x = -map_action(event.rotation[0])
-                y = -map_action(event.rotation[2])
-                z = map_action(event.translation[1])
-                rot_z = map_action(event.rotation[1])
+                y = map_action(event.rotation[2])
+                z = -map_action(event.translation[1])
+                rot_z = -map_action(event.rotation[1])
+
+                if self.reference_frame == "world":
+                    y *= -1
+                    z *= -1
+                    rot_z *= -1
                 return self._process_action_type([x, y, z, rot_z, self._gripper_state])
             if event.ev_type == spnav.SPNAV_EVENT_BUTTON:
                 if event.bnum == 0 and event.press:
@@ -131,12 +139,12 @@ class SpaceMouse:
         event = spnav.spnav_poll_event()
         if event is not None:
             if event.ev_type == spnav.SPNAV_EVENT_MOTION:
-                x = -map_action(event.translation[0])
-                y = -map_action(event.translation[2])
-                z = map_action(event.translation[1])
-                roll = map_action(event.rotation[0])
+                x = map_action(event.translation[2])
+                y = map_action(event.translation[0])
+                z = -map_action(event.translation[1])
+                roll = map_action(event.rotation[2])
+                pitch = map_action(event.rotation[0])
                 yaw = -map_action(event.rotation[1])
-                pitch = -map_action(event.rotation[2])
                 return [x, y, z, roll, pitch, yaw, self._gripper_state]
             if event.ev_type == spnav.SPNAV_EVENT_BUTTON:
                 if event.bnum == 0 and event.press:
@@ -169,7 +177,7 @@ class SpaceMouse:
 
 def test_mouse():
     """test mouse, print actions"""
-    mouse = SpaceMouse(act_type='continuous')
+    mouse = SpaceMouse(act_type='continuous', mode='7dof')
     for i in range(int(1e6)):
         action = mouse.get_action()
         print(i, action[0]['motion'])
