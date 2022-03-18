@@ -84,7 +84,7 @@ class RelActionConverter:
 
         if self.relative_action_control_frame == "world":
             # rel_action_pos = np.linalg.inv(orn_to_matrix(state["tcp_orn"])) @ rel_action_pos
-            rel_action_pos, rel_action_orn = to_tcp_frame(rel_action_pos, rel_action_orn, state["tcp_orn"])
+            rel_action_pos, rel_action_orn = to_tcp_frame(rel_action_pos, rel_action_orn, quat_to_euler(state["tcp_orn"]))
         for i in range(3):
             if state["contact"][i]:
                 # check opposite signs
@@ -97,7 +97,7 @@ class RelActionConverter:
                     rel_action_orn[i] = 0
         if self.relative_action_control_frame == "world":
             # rel_action_pos = orn_to_matrix(state["tcp_orn"]) @ rel_action_pos
-            rel_action_pos, rel_action_orn = to_world_frame(rel_action_pos, rel_action_orn, state["tcp_orn"])
+            rel_action_pos, rel_action_orn = to_world_frame(rel_action_pos, rel_action_orn, quat_to_euler(state["tcp_orn"]))
         return rel_action_pos, rel_action_orn
 
     def _restrict_orientation(self, desired_orn):

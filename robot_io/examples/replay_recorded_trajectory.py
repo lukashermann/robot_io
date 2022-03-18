@@ -25,7 +25,8 @@ def to_relative_action(prev_robot_state, robot_state, action):
     return action
 
 def to_absolute_action(robot_state, action):
-    gripper_action = action["motion"][-1]
+    return action
+    # gripper_action = action["motion"][-1]
     action = {"motion": (robot_state["tcp_pos"], robot_state["tcp_orn"], gripper_action), "ref": "abs"}
     return action
 

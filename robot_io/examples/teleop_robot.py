@@ -20,7 +20,7 @@ def main(cfg):
         robot.visualize_joint_states()
         robot.visualize_external_forces()
         recorder.step(action, obs, record_info)
-        # env.render()
+        env.render()
         fps.step()
         # print(1 / (time.time() - t1))
         t1 = time.time()

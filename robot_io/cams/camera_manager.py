@@ -89,13 +89,13 @@ class CameraManager:
 
     def render(self):
         if "rgb_gripper" in self.obs:
-            cv2.imshow("rgb_gripper", self.obs["rgb_gripper"][:, :, ::-1])
+            cv2.imshow("rgb_gripper", cv2.resize(self.obs["rgb_gripper"][:, :, ::-1], (500, 500)))
         if "depth_gripper" in self.obs:
             depth_img_gripper = self.normalize_depth(self.obs["depth_gripper"])
             depth_img_gripper = cv2.applyColorMap(depth_img_gripper, cv2.COLORMAP_JET)
-            cv2.imshow("depth_gripper", depth_img_gripper)
+            cv2.imshow("depth_gripper", cv2.resize(depth_img_gripper, (500, 500)))
         if "rgb_static" in self.obs:
-            cv2.imshow("rgb_static", self.obs["rgb_static"][:, :, ::-1])
+            cv2.imshow("rgb_static", cv2.resize(self.obs["rgb_static"][:, :, ::-1], (500, 500)))
         cv2.waitKey(1)
 
 

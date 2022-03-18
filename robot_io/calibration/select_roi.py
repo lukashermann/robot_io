@@ -49,4 +49,4 @@ def select_roi(cam, resolution=None):
 if __name__ == "__main__":
     # cam = Realsense(img_type='rgb_depth')
     cam = Kinect4(resolution='720p')
-    select_roi(cam, resolution=(300, 300))
+    select_roi(cam, resolution=(200, 150))
