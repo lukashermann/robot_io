@@ -4,9 +4,10 @@ import cv2
 import numpy as np
 import hydra.utils
 
-from robot_io.control.rel_action_converter import RelActionConverter
+from robot_io.control.rel_action_control import RelActionControl
 from robot_io.robot_interface.base_robot_interface import BaseRobotInterface
-from frankx import Affine, JointMotion, LinearMotion, Robot, PathMotion, WaypointMotion, Waypoint, LinearRelativeMotion, StopMotion, ImpedanceMotion, JointWaypointMotion
+from frankx import Affine, JointMotion, LinearMotion, Robot, PathMotion, WaypointMotion, Waypoint, \
+    LinearRelativeMotion, StopMotion, ImpedanceMotion, JointWaypointMotion
 from frankx.gripper import Gripper
 from _frankx import NetworkException
 
@@ -25,6 +26,25 @@ WRENCH_FRAME_CONV = np.diag([-1, 1, 1, -1, 1, 1])  # np.eye(6)
 
 
 class PandaFrankXInterface(BaseRobotInterface):
+    """
+    Robot control interface for Franka Emika Panda robot to be used on top of this Frankx fork
+    (https://github.com/lukashermann/frankx)
+
+    Args:
+        fci_ip: IPv4 address of Franka Control Interface (FCI).
+        urdf_path: URDF of panda robot (change default config e.g. when mounting different fingers).
+        neutral_pose: Joint angles in rad.
+        ll: Lower joint limits in rad.
+        ul: Upper joint limits in rad.
+        ik: Config of the inverse kinematic solver.
+        workspace_limits: Workspace limits defined as a bounding box or as hollow cylinder.
+        libfranka_params: DictConfig of params for libfranka.
+        use_impedance: If True, use impedance control whenever it is possible.
+        frankx_params: DictConfig of general params for Frankx.
+        impedance_params: DictConfig of params for Frankx impedance motion.
+        rel_action_params: DictConfig of params for relative action control.
+        gripper_params: DictConfig of params for Frankx gripper.
+    """
     def __init__(self,
                  fci_ip,
                  urdf_path,
@@ -55,7 +75,8 @@ class PandaFrankXInterface(BaseRobotInterface):
         self.use_impedance = use_impedance
         self.impedance_params = impedance_params
 
-        self.rel_action_converter = RelActionConverter(ll=ll, ul=ul, workspace_limits=workspace_limits, **rel_action_params)
+        self.rel_action_converter = RelActionControl(ll=ll, ul=ul, workspace_limits=workspace_limits,
+                                                     **rel_action_params)
 
         self.motion_thread = None
         self.current_motion = None
@@ -161,38 +182,6 @@ class PandaFrankXInterface(BaseRobotInterface):
                 time.sleep(0.01)
                 continue
 
-    def _frankx_async_impedance_motion(self, target_pos, target_orn):
-        target_pose = to_affine(target_pos, target_orn) * NE_T_EE
-        if self._is_active(ImpedanceMotion):
-            self.current_motion.set_target(target_pose)
-        else:
-            if self.current_motion is not None:
-                self.abort_motion()
-            self.current_motion = self._new_impedance_motion()
-            self.current_motion.set_target(target_pose)
-            self.motion_thread = self.robot.move_async(self.current_motion)
-
-    def _new_impedance_motion(self):
-        if self.impedance_params.use_nullspace:
-            return ImpedanceMotion(self.impedance_params.translational_stiffness,
-                                   self.impedance_params.rotational_stiffness,
-                                   self.impedance_params.nullspace_stiffness,
-                                   self.impedance_params.q_d_nullspace,
-                                   self.impedance_params.damping_xi)
-        else:
-            return ImpedanceMotion(self.impedance_params.translational_stiffness,
-                                   self.impedance_params.rotational_stiffness)
-
-    def _frankx_async_lin_motion(self, target_pos, target_orn):
-        target_pose = to_affine(target_pos, target_orn) * NE_T_EE
-        if self._is_active(WaypointMotion):
-            self.current_motion.set_next_waypoint(Waypoint(target_pose))
-        else:
-            if self.current_motion is not None:
-                self.abort_motion()
-            self.current_motion = WaypointMotion([Waypoint(target_pose), ], return_when_finished=False)
-            self.motion_thread = self.robot.move_async(self.current_motion)
-
     def get_state(self):
         if self.current_motion is None:
             _state = self.robot.read_once()
@@ -228,20 +217,85 @@ class PandaFrankXInterface(BaseRobotInterface):
     def close_gripper(self, blocking=False):
         self.gripper.close(blocking)
 
+    def _frankx_async_impedance_motion(self, target_pos, target_orn):
+        """
+        Start new async impedance motion. Do not call this directly.
+
+        Args:
+            target_pos: (x,y,z)
+            target_orn: quaternion (x,y,z,w) | euler_angles (α,β,γ)
+        """
+        target_pose = to_affine(target_pos, target_orn) * NE_T_EE
+        if self._is_active(ImpedanceMotion):
+            self.current_motion.set_target(target_pose)
+        else:
+            if self.current_motion is not None:
+                self.abort_motion()
+            self.current_motion = self._new_impedance_motion()
+            self.current_motion.set_target(target_pose)
+            self.motion_thread = self.robot.move_async(self.current_motion)
+
+    def _new_impedance_motion(self):
+        """
+        Create new frankx impedance motion with the params specified in config file.
+
+        Returns:
+            Impedance motion object.
+        """
+        if self.impedance_params.use_nullspace:
+            return ImpedanceMotion(self.impedance_params.translational_stiffness,
+                                   self.impedance_params.rotational_stiffness,
+                                   self.impedance_params.nullspace_stiffness,
+                                   self.impedance_params.q_d_nullspace,
+                                   self.impedance_params.damping_xi)
+        else:
+            return ImpedanceMotion(self.impedance_params.translational_stiffness,
+                                   self.impedance_params.rotational_stiffness)
+
+    def _frankx_async_lin_motion(self, target_pos, target_orn):
+        """
+        Start new Waypaint motion without impedance. Do not call this directly.
+
+        Args:
+            target_pos: (x,y,z)
+            target_orn: quaternion (x,y,z,w) | euler_angles (α,β,γ)
+        """
+        target_pose = to_affine(target_pos, target_orn) * NE_T_EE
+        if self._is_active(WaypointMotion):
+            self.current_motion.set_next_waypoint(Waypoint(target_pose))
+        else:
+            if self.current_motion is not None:
+                self.abort_motion()
+            self.current_motion = WaypointMotion([Waypoint(target_pose), ], return_when_finished=False)
+            self.motion_thread = self.robot.move_async(self.current_motion)
+
     def _inverse_kinematics(self, target_pos, target_orn):
         """
-        :param target_pos: cartesian target position
-        :param target_orn: cartesian target orientation
-        :return: target_joint_positions
+        Find inverse kinematics solution with the ik solver specified in config file.
+
+        Args:
+            target_pos: cartesian target position (x,y,z).
+            target_orn: cartesian target orientation, quaternion (x,y,z,w) | euler_angles (α,β,γ).
+
+        Returns:
+            Target joint angles in rad.
         """
         current_q = self.get_state()['joint_positions']
         new_q = self.ik_solver.inverse_kinematics(target_pos, target_orn, current_q)
         return new_q
 
     def _is_active(self, motion):
-        return self.current_motion is not None and isinstance(self.current_motion, motion)
+        """Returns True if there is a currently active motion with the same type as motion."""
+        return self.current_motion is not None and isinstance(self.current_motion, motion) and self.motion_thread.is_alive()
 
     def visualize_external_forces(self, canvas_width=500):
+        """
+        Display the external forces (x,y,z) and torques (a,b,c) of the tcp frame.
+
+        Args:
+            canvas_width: Display width in pixel.
+
+        """
         canvas = np.ones((300, canvas_width, 3))
         forces = self.get_state()["force_torque"]
         contact = np.array(self.libfranka_params.contact_force_threshold)

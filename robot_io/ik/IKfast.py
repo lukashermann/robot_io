@@ -1,10 +1,5 @@
-from itertools import chain
-
-from ikfast_franka_panda import get_dof, get_fk, get_free_dof, get_ik
+from ikfast_franka_panda import get_ik
 import numpy as np
-import pybullet as p
-from scipy.spatial.transform import Rotation as R
-import concurrent.futures
 from robot_io.utils.utils import pos_orn_to_matrix, timeit, matrix_to_pos_orn
 
 
@@ -15,6 +10,28 @@ def to_list(pose):
 
 
 class IKfast:
+    """
+    Use IKfast to get inverse kinematics solution.
+    Currently, only available for franka panda, but generally works for any robot.
+    IKfast in a fast analytic kinematics engine written in c++.
+    Uses pybind11 for python bindings.
+    Adapted from https://github.com/yijiangh/ikfast_pybind
+
+    IKfast only works for robot arms with maximum 6 DOF, but redundant robots like the panda have 7 DOF.
+    Thus, we call IKfast for different angles of the redundant DOF.
+    In case of multiple solutions, choose best solution based on distance to reference configuration (either a rest pose
+    or the current joint configuration).
+
+    Args:
+        rp: Rest pose used for null space handling.
+        ll: Lower joint limits.
+        ul: Upper joint limits.
+        F_T_NE (np.ndarray): Transformation from flange to nominal end-effector, as set in the Franka Desk.
+        weights: Weights for each DOF for picking the IK solution (higher weight of a DOF corresponds to less
+            distance between solution and reference configuration for that DOF).
+        num_angles: How many solutions to generate (with linearly spaced angles for the redundant DOF).
+        use_rest_pose: If True, use rest pose to pick a solution, otherwise use current configuration.
+    """
     def __init__(
         self,
         rp,
@@ -40,7 +57,31 @@ class IKfast:
         # this accounts for a new tcp frame (e.g. when using longer fingers)
         self.NE_T_NE_ikfast = np.linalg.inv(F_T_NE) @ F_T_NE_ikfast
 
-    def get_ik_solutions(self, target_pos, target_orn):
+    def inverse_kinematics(self, target_pos, target_orn, current_joint_state):
+        """
+        Get IKfast solution.
+
+        Args:
+            target_pos: Target position (x,y,z).
+            target_orn: Target orientation as quaternion (x,y,z,w) or euler_angles (α,β,γ).
+            current_joint_state: Current joint state (j1, ..., jn).
+
+        Returns:
+            Joint state of solution or current joint state if no solution was found.
+        """
+        sols = self._get_ik_solutions(target_pos, target_orn)
+        feasible_sols = self._filter_solutions(sols)
+        if len(feasible_sols) < 1:
+            print("Did not find IK Solution")
+            return current_joint_state
+        if self.use_rest_pose:
+            # choose solution according to weighted distance to rest pose
+            return self._choose_best_solution(feasible_sols, self.rp, self.weights)
+        else:
+            # choose solution according to weighted distance to current joint positions
+            return self._choose_best_solution(feasible_sols, current_joint_state, self.weights)
+
+    def _get_ik_solutions(self, target_pos, target_orn):
         # transform from NE to NE_ikfast frame
         # weird hack, otherwise ik doesnt find solution
         target_pose = pos_orn_to_matrix(*matrix_to_pos_orn(pos_orn_to_matrix(target_pos, target_orn) @ self.NE_T_NE_ikfast))
@@ -52,7 +93,7 @@ class IKfast:
             sols += get_ik(target_pos, target_orn, [q_6])
         return sols
 
-    def check_solution(self, sol):
+    def _check_solution(self, sol):
         # which joint positions of the solution are outside the joint limits
         out_ids = np.where(np.logical_or(sol < self.ll, sol > self.ul))[0]
         if len(out_ids) == 0:
@@ -72,26 +113,16 @@ class IKfast:
         # not a valid solution
         return np.ones(self.num_dof) * 9999.0
 
-    def filter_solutions(self, sols):
+    def _filter_solutions(self, sols):
         sols = np.array(sols)
         # filter IK solution with joint limits
-        feasible_sols = np.apply_along_axis(self.check_solution, axis=1, arr=sols)
+        feasible_sols = np.apply_along_axis(self._check_solution, axis=1, arr=sols)
         return feasible_sols[~np.any(feasible_sols == 9999, axis=1)]
 
     @staticmethod
-    def choose_best_solution(sols, reference_q, weights):
+    def _choose_best_solution(sols, reference_q, weights):
+        """
+        Choose solution based on weighted difference to reference configuration.
+        """
         best_sol_ind = np.argmin(np.sum((weights * (sols - np.array(reference_q))) ** 2, 1))
         return sols[best_sol_ind]
-
-    def inverse_kinematics(self, target_pos, target_orn, current_joint_state):
-        sols = self.get_ik_solutions(target_pos, target_orn)
-        feasible_sols = self.filter_solutions(sols)
-        if len(feasible_sols) < 1:
-            print("Did not find IK Solution")
-            return current_joint_state
-        if self.use_rest_pose:
-            # choose solution according to weighted distance to rest pose
-            return self.choose_best_solution(feasible_sols, self.rp, self.weights)
-        else:
-            # choose solution according to weighted distance to current joint positions
-            return self.choose_best_solution(feasible_sols, current_joint_state, self.weights)

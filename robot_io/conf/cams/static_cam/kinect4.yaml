@@ -5,5 +5,5 @@ align_depth_to_color: true
 resolution: '720p'
 undistort_image: true
 resize_resolution: [200, 150]
-crop_coords: [148, 498, 351, 817]
+crop_coords: [131, 517, 373, 889]
 fps: 30

@@ -3,7 +3,6 @@ SpaceMouse input class
 """
 import time
 import numpy as np
-from robot_io.utils.utils import euler_to_quat, timeit
 
 try:
     import spnav
@@ -19,18 +18,19 @@ GRIPPER_OPENING_ACTION = 1
 
 
 class SpaceMouse:
-    """SpaceMouse input class"""
+    """
+    SpaceMouse input class
+
+    Args:
+        act_type: ['continuous', 'discrete'] specifies action output
+        sensitivity: Lower value corresponds to higher sensitivity
+        mode: ['5dof', '7dof'] how many DOF of the robot are controlled
+        initial_gripper_state: ['open', 'closed'] initial opening of gripper
+        dv: Factor for cartesian position offset in relative cartesian position control, in meter
+        drot: Factor for orientation offset of gripper rotation in relative cartesian position control, in radians
+    """
     def __init__(self, act_type='continuous', sensitivity=100, mode="5dof", initial_gripper_state='open',
                  dv=0.01, drot=0.2, reference_frame='tcp', **kwargs):
-        """
-
-        :param act_type: ['continuous', 'discrete'] specifies action output
-        :param sensitivity: lower value corresponds to higher sensitivity
-        :param mode: ['5dof', '7dof'] how many DOF of the robot are controlled
-        :param initial_gripper_state: ['open', 'closed'] initial opening of gripper
-        :dv factor for cartesian position offset in relative cartesian position control, in meter
-        :drot factor for orientation offset of gripper rotation in relative cartesian position control, in radians
-        """
         # Note: this hangs if the SpaceNav mouse is not connecting properly
         # mostly commenting out this imput stream will be ok.
         # TODO(max): clean this up with a timeout/conditional messages maybe
@@ -57,6 +57,13 @@ class SpaceMouse:
         spnav.spnav_close()
 
     def get_action(self):
+        """
+        Get the action dictionary from 3d-mouse.
+
+        Returns:
+            action (dict): Keyboard action.
+            record_info: None (to be consistent with other input devices).
+        """
         if self.mode == '5dof':
             sm_action = self.handle_mouse_events_5dof()
             sm_action = np.array(sm_action)
@@ -171,11 +178,10 @@ class SpaceMouse:
 
     @staticmethod
     def clear_events():
-        '''clear events'''
         spnav.spnav_remove_events(spnav.SPNAV_EVENT_MOTION)
 
 
-def test_mouse():
+def print_actions():
     """test mouse, print actions"""
     mouse = SpaceMouse(act_type='continuous', mode='7dof')
     for i in range(int(1e6)):
@@ -185,4 +191,4 @@ def test_mouse():
 
 
 if __name__ == "__main__":
-    test_mouse()
+    print_actions()

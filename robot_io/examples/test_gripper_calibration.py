@@ -4,7 +4,7 @@ import cv2
 import hydra
 import numpy as np
 
-from robot_io.calibration.calibration import visualize_calibration_gripper_cam
+from robot_io.calibration.calibration_utils import visualize_calibration_gripper_cam
 
 
 def get_point_in_world_frame(cam, robot, T_tcp_cam, clicked_point, depth):

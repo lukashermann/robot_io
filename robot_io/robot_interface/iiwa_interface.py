@@ -4,7 +4,7 @@ import time
 
 import numpy as np
 from math import pi
-from robot_io.kuka_iiwa.wsg50_controller import WSG50Controller
+from robot_io.robot_interface.wsg50_controller import WSG50Controller
 from robot_io.robot_interface.base_robot_interface import BaseRobotInterface, GripperState
 from robot_io.utils.utils import np_quat_to_scipy_quat, pos_orn_to_matrix, euler_to_quat, quat_to_euler, \
     matrix_to_pos_orn, xyz_to_zyx
@@ -27,6 +27,7 @@ JAVA_SET_FRAME = 9
 # iiwa TCP frames
 TCP_SHORT_FINGER = 20
 TCP = 21
+
 
 class IIWAInterface(BaseRobotInterface):
     def __init__(self,

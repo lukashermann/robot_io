@@ -13,6 +13,7 @@ class GripperState(Enum):
     OPEN = 1
     CLOSED = -1
 
+
 class GripperInterface:
     @staticmethod
     def to_gripper_state(gs):
@@ -34,6 +35,7 @@ class GripperInterface:
         else:
             raise ValueError(f"gripper state must be GripperState Enum was {gs}.")
 
+
 class BaseRobotInterface:
     """
     Generic interface for robot control.
@@ -51,80 +53,115 @@ class BaseRobotInterface:
 
     def get_state(self):
         """
-        :return: Dictionary with full robot state
+        Get the proprioceptive robot state consisting of the following entries:
+        - tcp_pos: Tcp position as position (x,y,z)
+        - tcp_orn: Tcp orientation as quaternion (x,y,z,w)
+        - joint_positions: Joint angles in rad.
+        - gripper_opening_width: Gripper opening width in meter.
+        - force_torque: Estimated external wrench (force, torque) acting on tcp frame in [N,N,N,Nm,Nm,Nm].
+        - contact: Indicates which contact level is activated in which Cartesian dimension.
+            After contact disappears, the value turns to zero.
+
+        Returns:
+            Dictionary with full robot state.
         """
         raise NotImplementedError
 
     def get_tcp_pose(self):
         """
-        :return: Tcp pose as homogeneous matrix (4x4 np.ndarray)
+        Get tcp pose in base frame as homogeneous matrix (4x4 np.ndarray).
+
+        Returns:
+            tcp_pose_matrix (O_T_EE).
         """
         raise NotImplementedError
 
     def get_tcp_pos_orn(self):
         """
-        :return: Tcp pose as tuple (pos (x,y,z), orn (x,y,z,w))
+        Get tcp pose in base frame as position and orientation.
+
+        Returns:
+             tcp_pos: position (x,y,z).
+             tcp_orn: orientation quaternion (x,y,z,w).
         """
         raise NotImplementedError
 
     def move_cart_pos_abs_ptp(self, target_pos, target_orn):
         """
         Move robot to absolute cartesian pose with a PTP motion, blocking
-        :param target_pos: (x,y,z)
-        :param target_orn: quaternion (x,y,z,w) | euler_angles (x,y,z)
+
+        Args:
+            target_pos: Target position (x,y,z).
+            target_orn: Target orientation as quaternion (x,y,z,w) or euler_angles (α,β,γ).
         """
         raise NotImplementedError
 
     def move_joint_pos(self, joint_positions):
         """
         Move robot to absolute joint positions, blocking.
-        :param joint_positions: (j1, ..., jn)
+
+        Args:
+            joint_positions: (j1, ..., jn) in rad.
         """
         raise NotImplementedError
 
     def move_async_cart_pos_abs_ptp(self, target_pos, target_orn):
         """
-        Move robot to absolute cartesian pose with a PTP motion, non blocking
-        :param target_pos: (x,y,z)
-        :param target_orn: quaternion (x,y,z,w) | euler_angles (x,y,z)
+        Move robot asynchronously to absolute cartesian pose with a PTP motion.
+
+        Args:
+            target_pos: Target position (x,y,z).
+            target_orn: Target orientation as quaternion (x,y,z,w) or euler_angles (α,β,γ).
         """
         raise NotImplementedError
 
     def move_async_cart_pos_abs_lin(self, target_pos, target_orn):
         """
-        Move robot to absolute cartesian pose with a LIN motion, non blocking
-        :param target_pos: (x,y,z)
-        :param target_orn: quaternion (x,y,z,w) | euler_angles (x,y,z)
+        Move robot asynchronously to absolute cartesian pose on a straight line path in cartesian space.
+        Note that it might not be possible to reach the whole workspace space with a linear motion from an arbitrary
+        configuration.
+
+        Args:
+            target_pos: Target position (x,y,z).
+            target_orn: Target orientation as quaternion (x,y,z,w) or euler_angles (α,β,γ).
         """
         raise NotImplementedError
 
     def move_async_cart_pos_rel_ptp(self, rel_target_pos, rel_target_orn):
         """
-        Move robot to relative cartesian pose with a PTP motion, non blocking
-        :param rel_target_pos: position offset (x,y,z)
-        :param rel_target_orn: orientation offset quaternion (x,y,z,w) | euler_angles (x,y,z)
+        Move robot asynchronously to relative cartesian pose with a PTP motion.
+
+        Args:
+            rel_target_pos: Position offset (x,y,z).
+            rel_target_orn: Orientation offset as quaternion (x,y,z,w) or euler_angles (α,β,γ).
         """
         raise NotImplementedError
 
     def move_async_cart_pos_rel_lin(self, rel_target_pos, rel_target_orn):
         """
-        Move robot to relative cartesian pose with a LIN motion, non blocking
-        :param rel_target_pos: position offset (x,y,z)
-        :param rel_target_orn: orientation offset quaternion (x,y,z,w) | euler_angles (x,y,z)
+        Move robot asynchronously to relative cartesian pose on a straight line path in cartesian space.
+
+        Args:
+            rel_target_pos: Position offset (x,y,z).
+            rel_target_orn: Orientation offset as quaternion (x,y,z,w) or euler_angles (α,β,γ).
         """
         raise NotImplementedError
 
     def move_async_joint_pos(self, joint_positions):
         """
-        Move robot to absolute joint positions, non blocking.
-        :param joint_positions: (j1, ..., jn)
+        Move robot asynchronously to absolute joint positions.
+
+        Args:
+            joint_positions: (j1, ..., jn).
         """
         raise NotImplementedError
 
     def move_async_joint_vel(self, joint_velocities):
         """
-        Move robot with joint velocities, non blocking.
-        :param joint_velocities: (v1, ..., vn)
+        Move robot asynchronously with joint velocities.
+
+        Args:
+            joint_velocities: (j1, ..., jn).
         """
         raise NotImplementedError
 
@@ -136,27 +173,36 @@ class BaseRobotInterface:
 
     def close_gripper(self, blocking=False):
         """
-        Close fingers of the gripper.
-        :param blocking: wait for gripper action to be finished
+        Close fingers of the gripper. If the fingers are already closed, this action has no effect.
+
+        Args:
+            blocking: If True, wait for gripper action to be finished.
         """
         raise NotImplementedError
 
     def open_gripper(self, blocking=False):
         """
-        Open fingers of the gripper.
-        :param blocking: wait for gripper action to be finished
+        Open fingers of the gripper. If the fingers are already open, this action has no effect.
+
+        Args:
+            blocking: If True, wait for gripper action to be finished.
         """
         raise NotImplementedError
 
     def reached_position(self, target_pos, target_orn, cart_threshold=0.005, orn_threshold=0.05):
         """
-        Check if robot has reached a target pose
-        :param target_pos: (x,y,z)
-        :param target_orn: quaternion (x,y,z,w) | euler_angles (x,y,z)
-        :param cart_threshold: cartesian position error threshold for euclidean distance
-                               between current_pos and target_pos, in meter
-        :param orn_threshold: angular error threshold, in radian.
-        :return: True if reached pose, else False
+        Check if robot has reached a target pose (e.g. after sending an asynchronous movement command).
+        Try increasing the thresholds if this method never returns True.
+
+        Args:
+            target_pos: (x,y,z)
+            target_orn: Quaternion (x,y,z,w) | Euler_angles (α,β,γ).
+            cart_threshold: Cartesian position error threshold for euclidean distance
+                between current_pos and target_pos, in meter
+            orn_threshold: Angular error threshold, in radian.
+
+        Returns:
+            True if reached pose, False otherwise.
         """
         if len(target_orn) == 3:
             target_orn = euler_to_quat(target_orn)
@@ -167,16 +213,24 @@ class BaseRobotInterface:
 
     def reached_joint_state(self, target_state, threshold=0.001):
         """
-        Check if robot has reached a target joint state
-        :param target_state: (j1, ..., jn)
-        :param threshold:
-        :return: True if reached state, else False
+        Check if robot has reached a target joint state (e.g. after sending an asynchronous movement command).
+        Try increasing the thresholds if this method never returns True.
+
+        Args:
+            target_state: (j1, ..., jn)
+            threshold: In rad.
+
+        Returns:
+            True if reached state, False otherwise.
         """
         curr_pos = self.get_state()['joint_positions']
         offset = np.sum(np.abs((np.array(target_state) - curr_pos)))
         return offset < threshold
 
     def visualize_joint_states(self):
+        """
+        Visualize the robot's joint states (left border is lower bound, right border is upper bound).
+        """
         canvas = np.ones((300, 300, 3))
         joint_states = self.get_state()["joint_positions"]
         left = 10

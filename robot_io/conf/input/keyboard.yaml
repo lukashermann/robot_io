@@ -4,4 +4,4 @@ act_type: 'continuous'
 initial_gripper_state: 'open'
 dv: 0.01
 drot: 0.03
-mode: '7dof'
+mode: '5dof'

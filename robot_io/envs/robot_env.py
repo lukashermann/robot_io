@@ -4,18 +4,22 @@ import numpy as np
 
 import gym
 
-from robot_io.utils.utils import timeit
+from robot_io.utils.utils import timeit, restrict_workspace
 
 
 class RobotEnv(gym.Env):
+    """
+    Example env class that can be used for teleoperation.
+    Should be adapted to handle specific tasks.
+
+    Args:
+        robot: Robot interface.
+        workspace_limits: Workspace limits defined as a bounding box or as hollow cylinder.
+    """
     def __init__(self,
                  robot,
                  camera_manager_cfg,
                  workspace_limits):
-        """
-        :param robot:
-        :param workspace_limits: workspace bounding box [[x_min, y_min, z_min], [x_max, y_max, z_max]]
-        """
         self.robot = robot
         self.workspace_limits = workspace_limits
 
@@ -23,7 +27,7 @@ class RobotEnv(gym.Env):
 
     def reset(self, target_pos=None, target_orn=None, gripper_state="open"):
         """
-        Reset robot to neutral position.
+        Reset robot to neutral position and reset gripper to initial gripper state.
         """
         self.robot.open_gripper(blocking=True)
         if target_pos is not None and target_orn is not None:
@@ -40,7 +44,9 @@ class RobotEnv(gym.Env):
 
     def _get_obs(self):
         """
-        :return: dictionary with image obs and state obs
+        Get observation dictionary.
+        Returns:
+            Dictionary with image obs and state obs
         """
         obs = self.camera_manager.get_images()
         obs['robot_state'] = self.robot.get_state()
@@ -59,10 +65,16 @@ class RobotEnv(gym.Env):
     def step(self, action):
         """
         Execute one action on the robot.
-        :param action: {"motion": (position, orientation, gripper_action), "ref": "rel"/"abs"}
-                       a dict with the key 'motion' which is a cartesian motion tuple
-        :              and the key 'ref' which specifies if the motion is absolute or relative
-        :return: obs, reward, done, info
+
+        Args:
+            action (dict): {"motion": (position, orientation, gripper_action), "ref": "rel"/"abs"}
+                a dict with the key 'motion' which is a cartesian motion tuple
+                and the key 'ref' which specifies if the motion is absolute or relative
+        Returns:
+            obs (dict): agent's observation of the current environment.
+            reward (float): Currently always 0.
+            done (bool): whether the episode has ended, currently always False.
+            info (dict): contains auxiliary diagnostic information, currently empty.
         """
         if action is None:
             return self._get_obs(), 0, False, {}
@@ -72,7 +84,7 @@ class RobotEnv(gym.Env):
         ref = action['ref']
 
         if ref == "abs":
-            target_pos = self._restrict_workspace(target_pos)
+            target_pos = restrict_workspace(self.workspace_limits, target_pos)
             # TODO: use LIN for panda
             self.robot.move_async_cart_pos_abs_lin(target_pos, target_orn)
         elif ref == "rel":
@@ -97,13 +109,19 @@ class RobotEnv(gym.Env):
 
         return obs, reward, termination, info
 
-    def _restrict_workspace(self, target_pos):
-        """
-        :param target_pos: cartesian target position
-        :return: clip target_pos at workspace limits
-        """
-        return np.clip(target_pos, self.workspace_limits[0], self.workspace_limits[1])
-
     def render(self, mode='human'):
+        """
+        Renders the environment.
+        If mode is:
+
+        - human: render to the current display or terminal and
+          return nothing. Usually for human consumption.
+
+        Args:
+            mode (str): the mode to render with
+        """
         if mode == 'human':
             self.camera_manager.render()
+            self.robot.visualize_joint_states()
+            self.robot.visualize_external_forces()
+

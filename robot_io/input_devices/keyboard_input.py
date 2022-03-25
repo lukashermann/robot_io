@@ -1,18 +1,24 @@
 import os
-from enum import Enum
 
 import numpy as np
 import pygame
 
-from robot_io.robot_interface.base_robot_interface import GripperState
 from robot_io.robot_interface.base_robot_interface import GripperInterface as GI
 
 
 class KeyboardInput:
     """
-    Keyboard input classs.
+    Keyboard input class.
+    For 5-DOF control, use WASD to move the robot in the xy-plane, X/Z to move the robot in z-direction and
+    Q/E to rotate around the z-axis.
+    For 7-DOF control, additionally use the arrow keys to pitch and roll the end-effector.
 
-    enables wasd type control of robot
+    Args:
+        act_type: Currently only "continuous" is implemented.
+        initial_gripper_state: "open" or "closed".
+        dv: Position offset for relative actions in meter.
+        drot: Orientation offset for relative actions in rad.
+        mode: "5dof" or "7dof"
     """
 
     def __init__(self, act_type="continuous", initial_gripper_state='open', dv=0.01, drot=0.2, mode='5dof', **kwargs):
@@ -44,7 +50,7 @@ class KeyboardInput:
         self.gripper_state = GI.to_gripper_state(initial_gripper_state)
 
         # init pygame stuff
-        icon_fn = os.path.join(os.path.dirname(__file__),"assets/keyboard_icon.png")
+        icon_fn = os.path.join(os.path.dirname(__file__), "assets/keyboard_icon.png")
         image = pygame.image.load(icon_fn)
 
         screen = pygame.display.set_mode(image.get_size())
@@ -59,8 +65,14 @@ class KeyboardInput:
         self.pressed_keys = []
 
     def get_action(self):
+        """
+        Get the keyboard action dictionary.
 
-        raw_action = self.handle_keyboard_events()
+        Returns:
+            action (dict): Keyboard action.
+            record_info: None (to be consistent with other input devices).
+        """
+        raw_action = self._handle_keyboard_events()
         action = {"motion": np.split(raw_action, [3, 6]), "ref": "rel"}
         # To be compatible with vr input actions. For now there is nothing to pass as record info
         record_info = None
@@ -70,11 +82,12 @@ class KeyboardInput:
     def get_done(self):
         return self.done
 
-    def handle_keyboard_events(self):
+    def _handle_keyboard_events(self):
         """
-        handles keyboard actions
+        Detect keyboard events and compose action.
+
         Returns:
-            action: currently only 5dof
+            Action as a numpy array of shape (7,).
         """
         pressed_once_keys = []
         for event in pygame.event.get():
@@ -103,18 +116,16 @@ class KeyboardInput:
         action[-1] = self.gripper_state.value
 
         assert action.shape == (7,)
-
-        if self.mode == "5dof":
-            action = [*action[0:3], *action[5:7]]
-
         return action
 
-    def print_all_events(self):
+    @staticmethod
+    def print_all_events():
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN:
                 print(event)
 
-    def print_help(self):
+    @staticmethod
+    def print_help():
         print("Keyboard Input")
         print("RL/FB: WASDA")
         print("XZ: Up/Down")

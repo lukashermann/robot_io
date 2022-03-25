@@ -2,6 +2,7 @@ import math
 from enum import Enum
 from pathlib import Path
 
+import cv2
 import git
 import sys
 import time
@@ -134,6 +135,42 @@ def to_tcp_frame(rel_action_pos, rel_action_orn, tcp_orn):
     orn_tcp_rel = np.where(orn_tcp_rel > np.pi, orn_tcp_rel - 2 * np.pi, orn_tcp_rel)
     return pos_tcp_rel, orn_tcp_rel
 
+
+def restrict_workspace(workspace_limits, target_pos):
+    """
+    Clip target_pos at workspace limits.
+
+    Args:
+        workspace_limits: Either defined as a bounding box [[x_min, y_min, z_min], [x_max, y_max, z_max]]
+            or as a hollow cylinder [r_in, r_out, z_min, z_max].
+        target_pos: absolute target position (x,y,z).
+
+    Returns:
+        Clipped absolute target position (x,y,z).
+    """
+    if len(workspace_limits) == 2:
+        return np.clip(target_pos, workspace_limits[0], workspace_limits[1])
+    elif len(workspace_limits) == 4:
+        clipped_pos = target_pos.copy()
+        r_in = workspace_limits[0]
+        r_out = workspace_limits[1]
+        z_min = workspace_limits[2]
+        z_max = workspace_limits[3]
+        dist_center = np.sqrt(target_pos[0] ** 2 + target_pos[1] ** 2)
+        if dist_center > r_out:
+            theta = np.arctan2(target_pos[1], target_pos[0])
+            clipped_pos[0] = np.cos(theta) * r_out
+            clipped_pos[1] = np.sin(theta) * r_out
+        elif dist_center < r_in:
+            theta = np.arctan2(target_pos[1], target_pos[0])
+            clipped_pos[0] = np.cos(theta) * r_in
+            clipped_pos[1] = np.sin(theta) * r_in
+
+        clipped_pos[2] = np.clip(target_pos[2], z_min, z_max)
+        return clipped_pos
+    else:
+        raise ValueError
+
 import logging
 
 log = logging.getLogger(__name__)
@@ -203,6 +240,13 @@ def depth_img_to_uint16(depth_img, max_depth=4):
 
 def depth_img_from_uint16(depth_img, max_depth=4):
     return depth_img.astype('float') / (2 ** 16 - 1) * max_depth
+
+
+def upscale(img, max_width=500):
+    res = img.shape[:2][::-1]
+    scale = max_width / max(res)
+    new_res = tuple((np.array(res) * scale).astype(int))
+    return cv2.resize(img, new_res)
 
 
 class ReferenceType(Enum):

@@ -1,6 +1,5 @@
 save_dir: ../calibration/calibration_files/
-record_traj: false
-play_traj: true
+record_new_poses: true
 freq: 30
 
 marker_detector:
@@ -11,7 +10,7 @@ hydra:
     dir: ${save_dir}
 
 defaults:
-  - robot: panda_frankx_interface
+  - robot: panda_frankx_interface_vr
   - input: vr_input
   - cams/static_cam@cam: kinect4_highres
   - recorder: calib_recorder

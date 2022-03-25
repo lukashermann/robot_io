@@ -5,12 +5,27 @@ import hydra
 import numpy as np
 
 from robot_io.utils.utils import quat_to_euler, euler_to_quat
-from robot_io.calibration.calibration import calibrate_gripper_cam_least_squares, visualize_calibration_gripper_cam
-from robot_io.calibration.calibration import save_calibration, calibrate_gripper_cam_peak_martin, calculate_error
+from robot_io.calibration.calibration_utils import calibrate_gripper_cam_least_squares, visualize_calibration_gripper_cam
+from robot_io.calibration.calibration_utils import save_calibration, calibrate_gripper_cam_peak_martin, calculate_error
 
 
 class GripperCamPoseSampler:
-    """ Sample random poses """
+    """
+    Randomly sample end-effector poses for gripper cam calibration.
+    Poses are sampled with polar coordinates theta and r around initial_pos, which are then perturbed with a random
+    positional and rotational offset
+
+    Args:
+        initial_pos: TCP position around which poses are sampled
+        initial_orn: TCP orientation around which poses are sampled
+        theta_limits: Angle for polar coordinate sampling wrt. X-axis in robot base frame
+        r_limits: Radius for plar coordinate sampling
+        h_limits: Sampling range for height offset
+        trans_limits: Sampling range for lateral offset
+        yaw_limits: Sampling range for yaw offset
+        pitch_limit: Sampling range for pitch offset
+        roll_limit: Sampling range for roll offset
+    """
     def __init__(self,
                  initial_pos,
                  initial_orn,
@@ -21,19 +36,6 @@ class GripperCamPoseSampler:
                  yaw_limits,
                  pitch_limit,
                  roll_limit):
-        """
-        Poses are sampled with polar coordinates theta and r around initial_pos, which are then perturbed with a random
-        positional and rotational offset
-        :param initial_pos: TCP position around which poses are sampled
-        :param initial_orn: TCP orientation around which poses are sampled
-        :param theta_limits: Angle for polar coordinate sampling wrt. X-axis in robot base frame
-        :param r_limits: Radius for plar coordinate sampling
-        :param h_limits: Sampling range for height offset
-        :param trans_limits: Sampling range for lateral offset
-        :param yaw_limits: Sampling range for yaw offset
-        :param pitch_limit: Sampling range for pitch offset
-        :param roll_limit: Sampling range for roll offset
-        """
         self.initial_pos = np.array(initial_pos)
         self.initial_orn = quat_to_euler(np.array(initial_orn))
         self.theta_limits = theta_limits
@@ -45,7 +47,12 @@ class GripperCamPoseSampler:
         self.roll_limit = roll_limit
 
     def sample_pose(self):
-        """sample a  random pose"""
+        """
+        Sample a random pose
+        Returns:
+            target_pos: Position (x,y,z)
+            target_pos: Orientation quaternion (x,y,z,w)
+        """
         theta = np.random.uniform(*self.theta_limits)
         vec = np.array([np.cos(theta), np.sin(theta), 0])
         vec = vec * np.random.uniform(*self.r_limits)
@@ -64,6 +71,18 @@ class GripperCamPoseSampler:
 
 
 def record_gripper_cam_trajectory(robot, marker_detector, cfg):
+    """
+    Move robot to randomly generated poses and estimate marker poses.
+
+    Args:
+        robot: Robot interface.
+        marker_detector: Marker detection library.
+        cfg: Hydra config.
+
+    Returns:
+        tcp_poses (list): TCP poses as list of 4x4 matrices.
+        marker_poses (list): Detected marker poses as list of 4x4 matrices.
+    """
     robot.move_to_neutral()
     time.sleep(2)
     _, orn = robot.get_tcp_pos_orn()
@@ -88,6 +107,13 @@ def record_gripper_cam_trajectory(robot, marker_detector, cfg):
 
 @hydra.main(config_path="../conf", config_name="panda_calibrate_gripper_cam")
 def main(cfg):
+    """
+    Calibrate the gripper camera.
+    Put the marker on the table such that it is visible in the gripper camera from the randomly sampled poses.
+
+    Args:
+        cfg: Hydra config.
+    """
     cam = hydra.utils.instantiate(cfg.cam)
     marker_detector = hydra.utils.instantiate(cfg.marker_detector, cam=cam)
     robot = hydra.utils.instantiate(cfg.robot)
@@ -101,7 +127,6 @@ def main(cfg):
     save_calibration(robot.name, cam.name, "cam", "tcp", T_tcp_cam)
     calculate_error(T_tcp_cam, tcp_poses, marker_poses)
     visualize_calibration_gripper_cam(cam, T_tcp_cam)
-
 
 
 if __name__ == "__main__":

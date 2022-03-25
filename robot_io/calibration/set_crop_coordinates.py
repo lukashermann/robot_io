@@ -1,14 +1,16 @@
 import cv2
+import hydra
 import numpy as np
 
-from robot_io.cams.realsense.realsense import Realsense
-from robot_io.cams.kinect4.kinect4 import Kinect4
 
-def select_roi(cam, resolution=None):
+def set_crop_coordinates(cam, resolution=None):
     """
-    Select a region of interest
-    :param cam: Camera (Kinect4 or Realsense/Framos)
-    :param resolution: resolution defining the aspect ratio of the cropped ROI
+    Get the coordinates of an image region of interest, by drawing a selection rectangle.
+    Copy the values into a camera config to use them as default.
+
+    Args:
+        cam: Camera (Kinect4 or Realsense / Framos).
+        resolution: Resolution defining the aspect ratio of the cropped ROI (only the aspect ratio is used here).
     """
     while True:
         for i in range(10):
@@ -40,13 +42,17 @@ def select_roi(cam, resolution=None):
         print("Press ENTER to finish selection, press c button to redo.")
         k = cv2.waitKey(0) % 256
         if k == 13:
-            print("Image coordinates: ", center[1] - height // 2, center[1] + height // 2, center[0] - width // 2, center[0] + width // 2)
+            print(f"Image coordinates: ({center[1] - height // 2}, {center[1] + height // 2}, {center[0] - width // 2}, {center[0] + width // 2})")
             return
         else:
             continue
 
 
+@hydra.main(config_path="../conf", config_name="set_crop_coordinates")
+def main(cfg):
+    cam = hydra.utils.instantiate(cfg.cam)
+    set_crop_coordinates(cam, resolution=cfg.resolution)
+
+
 if __name__ == "__main__":
-    # cam = Realsense(img_type='rgb_depth')
-    cam = Kinect4(resolution='720p')
-    select_roi(cam, resolution=(200, 150))
+    main()

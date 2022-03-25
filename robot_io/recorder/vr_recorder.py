@@ -36,6 +36,14 @@ def count_previous_frames():
 
 
 class VrRecorder:
+    """
+    Save observations and robot trajectories when teleoperating the robot with an HTC Vive VR controller.
+    Press button 1 to start and stop recording.
+    Hold button 1 to delete the last recorded episode.
+
+    Args:
+        n_digits: Zero padding for files.
+    """
     def __init__(self, n_digits):
         self.recording = False
         self.queue = mp.Queue()

@@ -23,11 +23,13 @@ def process_obs(obs):
             obs[key] = depth_img_to_uint16(obs[key])
     return obs
 
+
 def unprocess_obs(obs):
     for key, value in obs.items():
         if "depth" in key:
             obs[key] = depth_img_from_uint16(obs[key])
     return obs
+
 
 def count_previous_frames():
     return len(list(Path.cwd().glob("frame*.npz")))
@@ -40,7 +42,7 @@ class SimpleRecorder:
         Recordings can be loaded with load_rec_list/PlaybackEnv.
 
         Arguments:
-            save_dir: directory in which to save
+            save_dir: Directory in which to save
             n_digits: zero padding for files
             save_images: save .jpg image files as well
         """
@@ -54,13 +56,23 @@ class SimpleRecorder:
         os.makedirs(self.save_dir, exist_ok=True)
 
     def step(self, action, obs, rew, done, info):
+        """
+        Save the data every step.
+
+        Args:
+            action: Action used to command the robot.
+            obs: Env observation.
+            rew: Env reward.
+            done: Env done.
+            info:  Env info.
+        """
         filename = f"frame_{self.save_frame_cnt:0{self.n_digits}d}.npz"
         filename = os.path.join(self.save_dir, filename)
         self.current_episode_filenames.append(filename)
         self.save_frame_cnt += 1
         self.queue.append((filename, action, obs, rew, done, info))
 
-    def process_queue(self):
+    def _process_queue(self):
         """
         Process function for queue.
         """
@@ -76,7 +88,7 @@ class SimpleRecorder:
                 img_fn = filename.replace(".npz",".jpg")
                 Image.fromarray(img).save(img_fn)
 
-    def save_info(self):
+    def _save_info(self):
         info_fn = os.path.join(self.save_dir, "env_info.json")
         env_info = self.env.get_info()
         env_info["time"] = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
@@ -86,10 +98,10 @@ class SimpleRecorder:
 
         self.env.camera_manager.save_calibration(self.save_dir)
 
-    def save(self):
+    def _save(self):
         length = len(self.queue)
-        self.process_queue()
-        self.save_info()
+        self._process_queue()
+        self._save_info()
         print(f"saved {self.save_dir} w/ length {length}")
 
 

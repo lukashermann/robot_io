@@ -4,6 +4,12 @@ import numpy as np
 
 @hydra.main(config_path="../conf", config_name="replay_recorded_trajectory")
 def main(cfg):
+    """
+    Starting from the neutral position, move the EE left and right.
+
+    Args:
+        cfg: Hydra config.
+    """
     robot = hydra.utils.instantiate(cfg.robot)
     robot.move_to_neutral()
 
