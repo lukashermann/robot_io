@@ -67,8 +67,8 @@ class IIWAInterface(BaseRobotInterface):
                             workspace_limits, tcp_name)
         self.neutral_pose = np.array(neutral_pose)
         self.gripper = WSG50Controller()
+        self.gripper_state = GripperState.OPEN
         if open_gripper:
-            self.gripper_state = GripperState.OPEN
             self.gripper.open_gripper()
         super().__init__()
 

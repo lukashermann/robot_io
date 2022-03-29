@@ -3,7 +3,7 @@ SpaceMouse input class
 """
 import time
 import numpy as np
-from robot_io.utils.utils import euler_to_quat
+from robot_io.utils.utils import euler_to_quat, timeit
 
 try:
     import spnav
@@ -81,12 +81,15 @@ class SpaceMouse:
             self.prev_orn = sm_controller_orn
             self.filter = True
 
-        action = {"motion": (sm_controller_pos, sm_controller_orn, gripper_action), "ref": "rel"}
+        action = {"motion": (sm_controller_pos.copy(), sm_controller_orn, gripper_action), "ref": "rel"}
         # To be compatible with vr input actions. For now there is nothing to pass as record info
         record_info = None
         self.clear_events()
 
         return action, record_info
+
+    def clear_gripper_input(self):
+        self._gripper_state = 0
 
     def handle_mouse_events(self):
         """process events"""
