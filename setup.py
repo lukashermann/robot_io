@@ -1,5 +1,5 @@
 from os import path as op
-from setuptools import setup
+from setuptools import setup, find_packages
 
 
 def _read(f):
@@ -12,5 +12,6 @@ install_requires = [
 
 setup(name='robot_io',
       version='0.0.1',
+      packages=find_packages(exclude=["misc"]),
       install_requires=install_requires,
 )

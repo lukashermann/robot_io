@@ -75,14 +75,15 @@ class RelActionControl:
         tcp_pos, tcp_orn, joint_positions = state["tcp_pos"], state["tcp_orn"], state["joint_positions"]
         if self.limit_control_5_dof:
             rel_action_orn = self._enforce_limit_gripper_joint(joint_positions, rel_action_orn)
+            rel_action_orn[:2] = 0
         rel_action_pos, rel_action_orn = self._restrict_action_if_contact(rel_action_pos, rel_action_orn, state)
 
         if self.relative_action_reference_frame == "current":
             if self.relative_action_control_frame == "tcp":
-                rel_action_pos = orn_to_matrix(tcp_orn) @ rel_action_pos
+                rel_action_pos, rel_action_orn = to_world_frame(rel_action_pos, rel_action_orn, tcp_orn)
             tcp_orn = quat_to_euler(tcp_orn)
             abs_target_pos = tcp_pos + rel_action_pos
-            abs_target_orn = tcp_orn + rel_action_orn
+            abs_target_orn = matrix_to_orn(orn_to_matrix(rel_action_orn) @ orn_to_matrix(tcp_orn))
             if self.limit_control_5_dof:
                 abs_target_orn = self._enforce_5_dof_control(abs_target_orn)
             abs_target_pos = restrict_workspace(self.workspace_limits, abs_target_pos)
@@ -94,7 +95,6 @@ class RelActionControl:
                 if self.limit_control_5_dof:
                     self.desired_orn = self._enforce_5_dof_control(self.desired_orn)
             if self.relative_action_control_frame == "tcp":
-                # rel_action_pos = orn_to_matrix(self.desired_orn) @ rel_action_pos
                 rel_action_pos, rel_action_orn = to_world_frame(rel_action_pos, rel_action_orn, self.desired_orn)
             self.desired_pos, desired_orn = self._apply_to_desired_pose(rel_action_pos, rel_action_orn, tcp_pos, tcp_orn)
             self.desired_orn = self._restrict_orientation(desired_orn)
@@ -165,7 +165,6 @@ class RelActionControl:
                 if state["force_torque"][i + 3] * rel_action_orn[i] < 0:
                     rel_action_orn[i] = 0
         if self.relative_action_control_frame == "world":
-            # rel_action_pos = orn_to_matrix(state["tcp_orn"]) @ rel_action_pos
             rel_action_pos, rel_action_orn = to_world_frame(rel_action_pos, rel_action_orn, quat_to_euler(state["tcp_orn"]))
         return rel_action_pos, rel_action_orn
 
@@ -215,8 +214,9 @@ class RelActionControl:
         # limit orientation
         rot_diff = quat_to_euler(matrix_to_orn(np.linalg.inv(orn_to_matrix(self.desired_orn)) @ orn_to_matrix(tcp_orn)))
         for i in range(3):
-            if rel_action_orn[i] > 0 and rot_diff[i] < self.relative_rot_clip_threshold:
-                desired_orn[i] += rel_action_orn[i]
-            elif rel_action_orn[i] < 0 and rot_diff[i] > -self.relative_rot_clip_threshold:
-                desired_orn[i] += rel_action_orn[i]
+            if rel_action_orn[i] > 0 and rot_diff[i] >= self.relative_rot_clip_threshold:
+                rel_action_orn[i] = 0
+            elif rel_action_orn[i] < 0 and rot_diff[i] <= -self.relative_rot_clip_threshold:
+                rel_action_orn[i] = 0
+        desired_orn = matrix_to_orn(orn_to_matrix(rel_action_orn) @ orn_to_matrix(desired_orn))
         return desired_pos, desired_orn

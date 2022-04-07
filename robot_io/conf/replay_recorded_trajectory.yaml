@@ -1,7 +1,7 @@
 save_dir: /tmp/
 load_dir: ???
-freq: 15
-use_rel_actions: false
+freq: 30
+use_rel_actions: true
 
 hydra:
   run:
@@ -9,7 +9,7 @@ hydra:
 
 defaults:
   - env: env
-  - robot: panda_frankx_interface
-  - cams: camera_manager
+  - robot: panda_frankx_interface_policy
+  - cams: no_cameras
   - override hydra/job_logging: colorlog
   - override hydra/hydra_logging: colorlog

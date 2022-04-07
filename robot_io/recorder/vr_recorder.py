@@ -56,10 +56,14 @@ class VrRecorder:
         self.n_digits = n_digits
         self.delete_thread = None
         self.dead_man_switch_was_down = False
-        self.ep_start_end_ids = []
-    
+        try:
+            # when adding to previous recording
+            self.ep_start_end_ids = np.load("ep_start_end_ids.npy")
+        except FileNotFoundError:
+            self.ep_start_end_ids = []
+
     def step(self, action, obs, record_info):
-        if record_info is None:
+        if record_info is None or "dead_man_switch_triggered" not in record_info:
             return
         if record_info["dead_man_switch_triggered"]:
             self.dead_man_switch_was_down = True

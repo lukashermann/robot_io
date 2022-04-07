@@ -4,6 +4,7 @@ import numpy as np
 
 import gym
 
+from robot_io.input_devices.keyboard_input import keyboard_control
 from robot_io.utils.utils import timeit, restrict_workspace
 
 
@@ -31,12 +32,24 @@ class RobotEnv(gym.Env):
         """
         self.robot.open_gripper(blocking=True)
         if target_pos is not None and target_orn is not None:
-            self.robot.move_cart_pos_abs_ptp(target_pos, target_orn)
+            success = self.robot.move_cart_pos_abs_ptp(target_pos, target_orn)
         else:
-            self.robot.move_to_neutral()
+            success = self.robot.move_to_neutral()
+
+        if not success:
+            print("Robot cannot reach target pose. What do you want to do?")
+            s = input("Press 'k' for resetting with the keyboard or 'n' to move to the neutral position.")
+            if s == "n":
+                self.robot.move_to_neutral()
+            elif s == "k":
+                keyboard_control(self)
+            s = input("Do you want to retry moving to the target pose? Y/n")
+            if s != "n":
+                return self.reset(target_pos, target_orn, gripper_state)
+
         if gripper_state == "open":
             self.robot.open_gripper(blocking=True)
-        elif gripper_state == "open":
+        elif gripper_state == "closed":
             self.robot.close_gripper(blocking=True)
         else:
             raise ValueError

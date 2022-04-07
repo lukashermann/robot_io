@@ -109,30 +109,39 @@ def matrix_to_pos_orn(mat):
     return pos, orn
 
 
+def to_relative_action_dict(prev_action, action):
+    rel_pos, rel_orn = to_relative(prev_action["motion"][0], prev_action["motion"][1], action["motion"][0], action["motion"][1])
+    gripper_action = action["motion"][-1]
+    action = {"motion": (rel_pos, rel_orn, gripper_action), "ref": "rel"}
+    return action
+
+
+def to_relative(pos_old, orn_old, pos_new, orn_new):
+    rel_pos = pos_new - pos_old
+    m_orn_new = orn_to_matrix(orn_new)
+    m_orn_old = orn_to_matrix(orn_old)
+    rel_orn = quat_to_euler(matrix_to_orn(m_orn_new @ np.linalg.inv(m_orn_old)))
+    rel_pos, rel_orn = to_tcp_frame(rel_pos, rel_orn, orn_old)
+    return rel_pos, rel_orn
+
+
 def to_world_frame(rel_action_pos, rel_action_orn, tcp_orn):
     T_world_tcp_old = orn_to_matrix(tcp_orn)
     pos_w_rel = T_world_tcp_old[:3, :3] @ rel_action_pos
     T_tcp_new_tcp_old = orn_to_matrix(rel_action_orn)
 
     T_world_tcp_new = T_world_tcp_old @ np.linalg.inv(T_tcp_new_tcp_old)
-    orn_w_new = matrix_to_orn(T_world_tcp_new)
-    orn_w_new = quat_to_euler(orn_w_new)
-    orn_w_rel = tcp_orn - orn_w_new
-    orn_w_rel = np.where(orn_w_rel < -np.pi, orn_w_rel + 2 * np.pi, orn_w_rel)
-    orn_w_rel = np.where(orn_w_rel > np.pi, orn_w_rel - 2 * np.pi, orn_w_rel)
+    orn_w_rel = quat_to_euler(matrix_to_orn(T_world_tcp_old @ np.linalg.inv(T_world_tcp_new)))
     return pos_w_rel, orn_w_rel
 
 
 def to_tcp_frame(rel_action_pos, rel_action_orn, tcp_orn):
     T_tcp_world = np.linalg.inv(orn_to_matrix(tcp_orn))
     pos_tcp_rel = T_tcp_world @ rel_action_pos
-    new_orn_w = tcp_orn + rel_action_orn
     T_world_tcp = orn_to_matrix(tcp_orn)
-    T_world_tcp_new = orn_to_matrix(new_orn_w)
-    T_tcp_new_tcp_old = np.linalg.inv(T_world_tcp_new) @ T_world_tcp
-    orn_tcp_rel = quat_to_euler(matrix_to_orn(T_tcp_new_tcp_old))
-    orn_tcp_rel = np.where(orn_tcp_rel < -np.pi, orn_tcp_rel + 2 * np.pi, orn_tcp_rel)
-    orn_tcp_rel = np.where(orn_tcp_rel > np.pi, orn_tcp_rel - 2 * np.pi, orn_tcp_rel)
+    T_world_tcp_new = orn_to_matrix(rel_action_orn) @ T_world_tcp
+
+    orn_tcp_rel = quat_to_euler(matrix_to_orn(np.linalg.inv(T_world_tcp) @ T_world_tcp_new))
     return pos_tcp_rel, orn_tcp_rel
 
 
@@ -239,6 +248,7 @@ def depth_img_to_uint16(depth_img, max_depth=4):
 
 
 def depth_img_from_uint16(depth_img, max_depth=4):
+    depth_img[np.isnan(depth_img)] = 0
     return depth_img.astype('float') / (2 ** 16 - 1) * max_depth
 
 

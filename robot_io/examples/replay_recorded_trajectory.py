@@ -4,18 +4,9 @@ from pathlib import Path
 import hydra
 import numpy as np
 
-from robot_io.utils.utils import FpsController, angle_between_angles, quat_to_euler
+from robot_io.utils.utils import FpsController, to_relative_action_dict
 
 N_DIGITS = 6
-
-
-def to_relative_action(prev_action, action):
-    rel_pos = action["motion"][0] - prev_action["motion"][0]
-    rel_orn = angle_between_angles(quat_to_euler(action["motion"][1] - prev_action["motion"][1]))
-
-    gripper_action = action["motion"][-1]
-    action = {"motion": (rel_pos, rel_orn, gripper_action), "ref": "rel"}
-    return action
 
 
 def get_ep_start_end_ids(path):
@@ -39,7 +30,7 @@ def get_action(path, i, use_rel_actions=False):
     action = frame["action"].item()
     if use_rel_actions:
         prev_action = get_frame(path, i - 1)['action'].item()
-        return to_relative_action(prev_action, action)
+        return to_relative_action_dict(prev_action, action)
     else:
         return action
 

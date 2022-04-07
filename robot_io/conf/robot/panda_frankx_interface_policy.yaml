@@ -20,8 +20,8 @@ libfranka_params:
 #  franka_joint_impedance: [ 3000, 3000, 3000, 2500, 2500, 2000, 2000 ]
 
 frankx_params:
-  velocity_rel: 0.3
-  acceleration_rel: 0.3
+  velocity_rel: 0.2
+  acceleration_rel: 0.2
   jerk_rel: 0.2
 
 impedance_params:
@@ -43,12 +43,12 @@ gripper_params:
 
 rel_action_params:
   relative_action_reference_frame: "desired"  # "current" or "desired"
-  relative_action_control_frame: "world"  # "tcp" or "world"
+  relative_action_control_frame: "tcp"  # "tcp" or "world"
   relative_pos_clip_threshold: 0.05
   relative_rot_clip_threshold: 0.3
   max_ee_pitch: 30  # degrees
   max_ee_roll: 60  # degrees
-  limit_control_5_dof: true
+  limit_control_5_dof: false
   default_orn_x: 3.141593
   default_orn_y: 0
 

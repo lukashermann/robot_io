@@ -164,7 +164,10 @@ class PandaFrankXInterface(BaseRobotInterface):
     def move_joint_pos(self, joint_positions):
         self.reference_type = ReferenceType.JOINT
         self.abort_motion()
-        return self.robot.move(JointMotion(joint_positions))
+        success = self.robot.move(JointMotion(joint_positions))
+        if not success:
+            self.robot.recover_from_errors()
+        return success
 
     def abort_motion(self):
         if self.current_motion is not None:

@@ -1,6 +1,6 @@
 save_dir: /tmp/test_record1
 freq: 30
-show_fps: true
+show_fps: false
 
 hydra:
   run:

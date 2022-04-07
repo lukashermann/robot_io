@@ -4,6 +4,7 @@ import numpy as np
 import pygame
 
 from robot_io.robot_interface.base_robot_interface import GripperInterface as GI
+from robot_io.utils.utils import FpsController
 
 
 class KeyboardInput:
@@ -21,9 +22,11 @@ class KeyboardInput:
         mode: "5dof" or "7dof"
     """
 
-    def __init__(self, act_type="continuous", initial_gripper_state='open', dv=0.01, drot=0.2, mode='5dof', **kwargs):
+    def __init__(self, act_type="continuous", initial_gripper_state='open', dv=0.01, drot=0.2, reference_frame='tcp', mode='5dof', **kwargs):
         assert act_type == 'continuous'
         assert mode in ('5dof', '7dof')
+        assert reference_frame in ('tcp', 'world')
+        self.reference_frame = reference_frame
         self.pressed_keys = []
         self.mode = mode
         self.done = False
@@ -75,7 +78,7 @@ class KeyboardInput:
         raw_action = self._handle_keyboard_events()
         action = {"motion": np.split(raw_action, [3, 6]), "ref": "rel"}
         # To be compatible with vr input actions. For now there is nothing to pass as record info
-        record_info = None
+        record_info = {"done": self.done}
 
         return action, record_info
 
@@ -112,6 +115,12 @@ class KeyboardInput:
         actions += [(0, 0, 0, 0, 0, 0, 0)]
         action = np.sum(actions, axis=0)
 
+        if self.reference_frame == "world":
+            action[1] *= -1
+            action[2] *= -1
+            action[4] *= -1
+            action[5] *= -1
+
         # gripper action
         action[-1] = self.gripper_state.value
 
@@ -126,10 +135,30 @@ class KeyboardInput:
 
     @staticmethod
     def print_help():
-        print("Keyboard Input")
-        print("RL/FB: WASDA")
-        print("XZ: Up/Down")
-        print("Rotation: Q/E")
+        print("Keyboard Input:")
+        print("use WASD to move the robot in the xy-plane, X/Z to move the robot in z-direction and")
+        print("Q/E to rotate around the z-axis.")
+        print("Use the arrow keys to pitch and roll the end-effector.")
+
+
+def keyboard_control(env):
+    """
+    Use this to free the robot from a stuck position.
+
+    Args:
+        env: RobotEnv
+    """
+    kb = KeyboardInput(dv=0.005, drot=0.01, reference_frame='tcp', mode='7dof')
+    kb.print_help()
+    print("Press ESC to leave keyboard control.")
+    done = False
+    fps = FpsController(20)
+    while not done:
+        action, info = kb.get_action()
+        print(action)
+        done = info["done"]
+        env.step(action)
+        fps.step()
 
 
 if __name__ == "__main__":
