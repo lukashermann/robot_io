@@ -2,6 +2,7 @@ import signal
 import os
 import sys
 import time
+from pathlib import Path
 from functools import partial
 
 import cv2
@@ -61,7 +62,7 @@ class CameraManager:
         self.obs = obs
         return obs
 
-    def save_calibration(self, save_dir=""):
+    def calibration_as_dict(self):
         camera_info = {}
         if self.gripper_cam is not None:
             camera_info["gripper_extrinsic_calibration"] = self.gripper_cam.get_extrinsic_calibration(self.robot_name)
@@ -69,9 +70,13 @@ class CameraManager:
         if self.static_cam is not None:
             camera_info["static_extrinsic_calibration"] = self.static_cam.get_extrinsic_calibration(self.robot_name)
             camera_info["static_intrinsics"] = self.static_cam.get_intrinsics()
+        return camera_info
+
+    def save_calibration(self, save_dir=""):
+        camera_info = self.calibration_as_dict()
         if len(camera_info):
-            save_path = os.path.join(save_dir, "camera_info.npz")
-            np.savez(save_path, **camera_info)
+            fn = Path(save_dir) / "camera_info.npz"
+            np.savez(fn, **camera_info)
 
     def normalize_depth(self, img):
         img_mask = img == 0

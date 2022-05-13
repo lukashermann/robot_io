@@ -98,6 +98,9 @@ class RobotEnv(gym.Env):
             reward (float): Currently always 0.
             done (bool): whether the episode has ended, currently always False.
             info (dict): contains auxiliary diagnostic information, currently empty.
+
+        obs should not contain the keys: action, done, **rew**, or info as this will
+        cause call problems when recording.
         """
         if action is None:
             return self._get_obs(), 0, False, {}
