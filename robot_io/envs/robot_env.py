@@ -1,11 +1,10 @@
 import time
-import hydra
-import numpy as np
 
 import gym
-
+import hydra
+import numpy as np
 from robot_io.input_devices.keyboard_input import keyboard_control
-from robot_io.utils.utils import timeit, restrict_workspace
+from robot_io.utils.utils import FpsController, restrict_workspace, timeit
 
 
 class RobotEnv(gym.Env):
@@ -17,14 +16,23 @@ class RobotEnv(gym.Env):
         robot: Robot interface.
         workspace_limits: Workspace limits defined as a bounding box or as hollow cylinder.
     """
-    def __init__(self,
-                 robot,
-                 camera_manager_cfg,
-                 workspace_limits):
+
+    def __init__(
+        self,
+        robot,
+        camera_manager_cfg,
+        workspace_limits,
+        freq: int = 15,
+        show_fps: bool = False,
+    ):
         self.robot = robot
         self.workspace_limits = workspace_limits
-
-        self.camera_manager = hydra.utils.instantiate(camera_manager_cfg, robot_name=robot.name)
+        self.camera_manager = hydra.utils.instantiate(
+            camera_manager_cfg, robot_name=robot.name
+        )
+        self.show_fps = show_fps
+        self.fps_controller = FpsController(freq)
+        self.t1 = time.time()
 
     def reset(self, target_pos=None, target_orn=None, gripper_state="open"):
         """
@@ -38,7 +46,9 @@ class RobotEnv(gym.Env):
 
         if not success:
             print("Robot cannot reach target pose. What do you want to do?")
-            s = input("Press 'k' for resetting with the keyboard or 'n' to move to the neutral position.")
+            s = input(
+                "Press 'k' for resetting with the keyboard or 'n' to move to the neutral position."
+            )
             if s == "n":
                 self.robot.move_to_neutral()
             elif s == "k":
@@ -62,7 +72,7 @@ class RobotEnv(gym.Env):
             Dictionary with image obs and state obs
         """
         obs = self.camera_manager.get_images()
-        obs['robot_state'] = self.robot.get_state()
+        obs["robot_state"] = self.robot.get_state()
         return obs
 
     def get_reward(self, obs, action):
@@ -91,10 +101,10 @@ class RobotEnv(gym.Env):
         """
         if action is None:
             return self._get_obs(), 0, False, {}
-        assert isinstance(action, dict) and len(action['motion']) == 3
+        assert isinstance(action, dict) and len(action["motion"]) == 3
 
-        target_pos, target_orn, gripper_action = action['motion']
-        ref = action['ref']
+        target_pos, target_orn, gripper_action = action["motion"]
+        ref = action["ref"]
 
         if ref == "abs":
             target_pos = restrict_workspace(self.workspace_limits, target_pos)
@@ -112,6 +122,11 @@ class RobotEnv(gym.Env):
         else:
             raise ValueError
 
+        self.fps_controller.step()
+        if self.show_fps:
+            print(f"FPS: {1 / (time.time() - self.t1)}")
+        self.t1 = time.time()
+
         obs = self._get_obs()
 
         reward = self.get_reward(obs, action)
@@ -122,7 +137,7 @@ class RobotEnv(gym.Env):
 
         return obs, reward, termination, info
 
-    def render(self, mode='human'):
+    def render(self, mode="human"):
         """
         Renders the environment.
         If mode is:
@@ -133,8 +148,7 @@ class RobotEnv(gym.Env):
         Args:
             mode (str): the mode to render with
         """
-        if mode == 'human':
+        if mode == "human":
             self.camera_manager.render()
             self.robot.visualize_joint_states()
             self.robot.visualize_external_forces()
-

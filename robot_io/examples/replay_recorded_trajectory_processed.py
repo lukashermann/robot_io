@@ -1,15 +1,13 @@
-import time
 from pathlib import Path
 
 import hydra
 import numpy as np
-
-from robot_io.utils.utils import FpsController, to_relative_action_dict, to_relative_action_pos_dict
-from robot_io.utils.utils import FpsController, to_relative
+from robot_io.utils.utils import to_relative, to_relative_action_dict
 
 N_DIGITS = 6
 MAX_REL_POS = 0.02
 MAX_REL_ORN = 0.05
+
 
 def get_ep_start_end_ids(path):
     return np.sort(np.load(Path(path) / "ep_start_end_ids.npy"), axis=0)
@@ -22,9 +20,13 @@ def get_frame(path, i):
 
 def reset(env, path, i):
     data = get_frame(path, i)
-    robot_state = data['robot_obs']
+    robot_state = data["robot_obs"]
     gripper_state = "open" if robot_state[7] > 0.07 else "closed"
-    env.reset(target_pos=robot_state[:3], target_orn=robot_state[3:6], gripper_state=gripper_state)
+    env.reset(
+        target_pos=robot_state[:3],
+        target_orn=robot_state[3:6],
+        gripper_state=gripper_state,
+    )
 
 
 def get_action(path, i, use_rel_actions=False):
@@ -43,6 +45,7 @@ def get_action(path, i, use_rel_actions=False):
     # else:
     #     return action
 
+
 def to_relative_action_dict(pos, next_pos, gripper_action):
     pos = pos[:3]
     orn = next_pos[3:6]
@@ -53,11 +56,12 @@ def to_relative_action_dict(pos, next_pos, gripper_action):
     action = {"motion": (rel_pos, rel_orn, gripper_action), "ref": "rel"}
     return action
 
+
 def get_action_pos(path, i, use_rel_actions=False):
     frame = get_frame(path, i)
     robot_obs = frame["robot_obs"].item()
     if use_rel_actions:
-        next_obs = get_frame(path, i + 1)['robot_obs'].item()
+        next_obs = get_frame(path, i + 1)["robot_obs"].item()
         gripper_action = robot_obs[-1]
         return to_relative_action_dict(robot_obs, next_obs, gripper_action)
     else:
@@ -81,7 +85,6 @@ def main(cfg):
 
     use_rel_actions = cfg.use_rel_actions
     ep_start_end_ids = get_ep_start_end_ids(cfg.load_dir)
-    fps = FpsController(cfg.freq)
 
     env.reset()
     for start_idx, end_idx in ep_start_end_ids:
@@ -90,7 +93,6 @@ def main(cfg):
             action = get_action(cfg.load_dir, i, use_rel_actions)
             obs, _, _, _ = env.step(action)
             env.render()
-            fps.step()
         break
 
 
