@@ -5,3 +5,6 @@ robot_io/calibration/calibration_files/*
 robot_io/marker_detection/apriltag_detection/build/*
 robot_io/marker_detection/apriltag_detection/AprilTagDetectorBatch.cpython-38-x86_64-linux-gnu.so
 robot_io/marker_detection/apriltag_detection/AprilTagDetectorBatch.cpp
+librealsense2/
+robot_io/control/outputs/
+robot_io/calibration/outputs/2022-04-14/15-46-40/.hydra/hydra.yaml

@@ -108,6 +108,10 @@ def matrix_to_pos_orn(mat):
     pos = mat[:3, 3]
     return pos, orn
 
+def to_relative_action_pos_dict(pos, next_pos, gripper_action):
+    rel_pos, rel_orn = to_relative(pos["tcp_pos"], pos["tcp_orn"], next_pos["tcp_pos"], next_pos["tcp_orn"])
+    action = {"motion": (rel_pos, rel_orn, gripper_action), "ref": "rel"}
+    return action
 
 def to_relative_action_dict(prev_action, action):
     rel_pos, rel_orn = to_relative(prev_action["motion"][0], prev_action["motion"][1], action["motion"][0], action["motion"][1])
@@ -121,7 +125,7 @@ def to_relative(pos_old, orn_old, pos_new, orn_new):
     m_orn_new = orn_to_matrix(orn_new)
     m_orn_old = orn_to_matrix(orn_old)
     rel_orn = quat_to_euler(matrix_to_orn(m_orn_new @ np.linalg.inv(m_orn_old)))
-    rel_pos, rel_orn = to_tcp_frame(rel_pos, rel_orn, orn_old)
+    # rel_pos, rel_orn = to_tcp_frame(rel_pos, rel_orn, orn_old)
     return rel_pos, rel_orn
 
 
