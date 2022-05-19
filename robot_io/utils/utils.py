@@ -125,7 +125,7 @@ def to_relative(pos_old, orn_old, pos_new, orn_new):
     m_orn_new = orn_to_matrix(orn_new)
     m_orn_old = orn_to_matrix(orn_old)
     rel_orn = quat_to_euler(matrix_to_orn(m_orn_new @ np.linalg.inv(m_orn_old)))
-    # rel_pos, rel_orn = to_tcp_frame(rel_pos, rel_orn, orn_old)
+    rel_pos, rel_orn = to_tcp_frame(rel_pos, rel_orn, orn_old)
     return rel_pos, rel_orn
 
 
