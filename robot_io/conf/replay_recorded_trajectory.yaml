@@ -6,6 +6,7 @@ defaults:
   - override hydra/hydra_logging: colorlog
   - _self_
 
+rel_action_type: aa
 hydra:
   run:
     dir: ${save_dir}/${now:%Y-%m-%d}/${now:%H-%M-%S}

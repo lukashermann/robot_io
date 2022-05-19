@@ -49,6 +49,18 @@ def get_action_pos(path, i, use_rel_actions=False):
     else:
         return action
 
+def get_action_pos_action(path, i, use_rel_actions=True):
+    frame = get_frame(path, i)
+    pose = frame["robot_state"].item()
+    action = frame["action"].item()
+
+    if use_rel_actions:
+        next_pose = {"tcp_pos": action["motion"][0], "tcp_orn": action["motion"][1]}
+        gripper_action = action["motion"][-1]
+        return to_relative_action_pos_dict(pose, next_pose, gripper_action)
+    else:
+        return frame
+
 
 @hydra.main(config_path="../conf", config_name="replay_recorded_trajectory")
 def main(cfg):
@@ -65,10 +77,14 @@ def main(cfg):
     ep_start_end_ids = get_ep_start_end_ids(cfg.load_dir)
 
     env.reset()
+    get_relative_actions = {"pp": get_action_pos,
+                            "aa": get_action,
+                            "pa": get_action_pos_action}
+
     for start_idx, end_idx in ep_start_end_ids:
         reset(env, cfg.load_dir, start_idx)
         for i in range(start_idx + 1, end_idx + 1):
-            action = get_action_pos(cfg.load_dir, i, use_rel_actions)
+            action = get_relative_actions[cfg.rel_action_type](cfg.load_dir, i, use_rel_actions)
             obs, _, _, _ = env.step(action)
             env.render()
 
