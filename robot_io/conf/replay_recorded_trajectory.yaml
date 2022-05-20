@@ -16,4 +16,4 @@ load_dir: ???
 use_rel_actions: true
 
 env:
-  freq: 30
+  freq: 15
