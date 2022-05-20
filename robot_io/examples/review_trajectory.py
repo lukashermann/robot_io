@@ -5,6 +5,7 @@ import hydra
 import numpy as np
 from robot_io.utils.utils import ReferenceType
 from robot_io.utils.utils import restrict_workspace
+from robot_io.control.rel_action_control import RelActionControl
 
 from robot_io.utils.utils import FpsController, to_relative_action_dict, to_relative_action_pos_dict
 
@@ -27,7 +28,7 @@ def reset(env, path, i):
     env.reset(target_pos=robot_state["tcp_pos"], target_orn=robot_state["tcp_orn"], gripper_state=gripper_state)
 
 
-def get_action(path, i, use_rel_actions=False):
+def get_action(path, i, use_rel_actions=True):
     frame = get_frame(path, i)
     action = frame["action"].item()
     if use_rel_actions:
@@ -36,7 +37,7 @@ def get_action(path, i, use_rel_actions=False):
     else:
         return action
 
-def get_action_pos(path, i, use_rel_actions=False):
+def get_action_pos(path, i, use_rel_actions=True):
     frame = get_frame(path, i)
     pos = frame["robot_state"].item()
     action = frame["action"].item()
@@ -48,6 +49,44 @@ def get_action_pos(path, i, use_rel_actions=False):
     else:
         return frame
 
+def get_action_pos_action(path, i, use_rel_actions=True):
+    frame = get_frame(path, i)
+    pose = frame["robot_state"].item()
+    action = frame["action"].item()
+
+    if use_rel_actions:
+        next_pose = {"tcp_pos": action["motion"][0], "tcp_orn": action["motion"][1]}
+        gripper_action = action["motion"][-1]
+        return to_relative_action_pos_dict(pose, next_pose, gripper_action)
+    else:
+        return frame
+
+def get_vars(cfg, i, converter="current_state", relative_actions="pp", target_pos="action"):
+    past_frame = get_frame(cfg.load_dir, i-1)
+    frame = get_frame(cfg.load_dir, i)
+    next_frame = get_frame(cfg.load_dir, i + 1)
+
+    get_relative_actions = {"pp": get_action_pos,
+                            "aa": get_action,
+                            "pa": get_action_pos_action}
+
+    relative_actions_estimates =  get_relative_actions[relative_actions](cfg.load_dir, i, True)
+
+    # Position estimate w/ actions
+    if converter =="past_action":
+        robot_pos = past_frame["action"].item()["motion"][0]
+        robot_orn = past_frame["action"].item()["motion"][1]
+        converter_robot_state = {"tcp_pos": robot_pos, "tcp_orn": robot_orn, "joint_positions": None}
+    else:
+    # Position estimate saved on dataset
+        converter_robot_state = frame["robot_state"].item()
+    
+    if target_pos=="action":
+        target_pos_estimate = frame["action"].item()["motion"][0]
+    else:
+        target_pos_estimate = next_frame["robot_state"].item()["tcp_pos"]
+
+    return converter_robot_state, relative_actions_estimates, target_pos_estimate
 
 @hydra.main(config_path="../conf", config_name="replay_recorded_trajectory")
 def main(cfg):
@@ -57,8 +96,9 @@ def main(cfg):
     Args:
         cfg: Hydra config
     """
-    robot = hydra.utils.instantiate(cfg.robot)
-    # env = hydra.utils.instantiate(cfg.env, robot=robot)
+    rel_action_converter = RelActionControl(ll=cfg.robot.ll, ul=cfg.robot.ul,
+                                            workspace_limits=cfg.robot.workspace_limits,
+                                            **cfg.robot.rel_action_params)
 
     use_rel_actions = cfg.use_rel_actions
     ep_start_end_ids = get_ep_start_end_ids(cfg.load_dir)
@@ -74,26 +114,19 @@ def main(cfg):
     pos = robot_state["tcp_pos"]
     for start_idx, end_idx in ep_start_end_ids:
         # reset(env, cfg.load_dir, start_idx)
-        for i in range(start_idx + 1, end_idx + 1):
-            # Absolute actions
-            # prev_action, curent_obs
-            frame = get_frame(cfg.load_dir, i)
-            next_frame = get_frame(cfg.load_dir, i + 1)
+        for i in range(start_idx + 1, end_idx):
+            robot_state, relative_actions_estimates, target_pos = \
+                get_vars(cfg, i, converter="pos", relative_actions="aa", target_pos="pos")
 
-            robot_state = frame["robot_state"].item()
-            action = next_frame["action"].item()
-            target_pos, target_orn, gripper_action = action['motion']
             target_pos = restrict_workspace(cfg.robot.workspace_limits, target_pos)
-
             # Relative actions converted to absolute
-            relative_action = get_action_pos(cfg.load_dir, i + 1, True)
-            rel_target_pos = relative_action["motion"][0]
-            rel_target_orn = relative_action["motion"][1]
-            converted_pos, converted_orn = robot.rel_action_converter.to_absolute(rel_target_pos, rel_target_orn, robot_state, reference_type)
+            rel_target_pos = relative_actions_estimates["motion"][0]
+            rel_target_orn = relative_actions_estimates["motion"][1]
+
+            converted_pos, converted_orn = rel_action_converter.to_absolute(rel_target_pos, rel_target_orn, robot_state, reference_type)
             reference_type=ReferenceType.RELATIVE
 
-            # pos = robot_state["tcp_pos"]
-            print("target_pos", np.linalg.norm(np.array(target_pos) - np.array(converted_pos)))
+            print("target_pos", np.linalg.norm(np.array(converted_pos) - np.array(target_pos)))
             # obs, _, _, _ = env.step(action)
             # env.render()
             # fps.step()

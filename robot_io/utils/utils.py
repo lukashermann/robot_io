@@ -119,6 +119,15 @@ def to_relative_action_dict(prev_action, action):
     action = {"motion": (rel_pos, rel_orn, gripper_action), "ref": "rel"}
     return action
 
+def to_relative_all_frames(pos_old, orn_old, pos_new, orn_new):
+    rel_pos = pos_new - pos_old
+    m_orn_new = orn_to_matrix(orn_new)
+    m_orn_old = orn_to_matrix(orn_old)
+    rel_orn = quat_to_euler(matrix_to_orn(m_orn_new @ np.linalg.inv(m_orn_old)))
+    rel_pos_gripper_frame, rel_orn_gripper_frame = to_tcp_frame(rel_pos, rel_orn, orn_old)
+
+    return {"world_frame": (rel_pos, rel_orn),
+            "gripper_frame": (rel_pos_gripper_frame, rel_orn_gripper_frame)}
 
 def to_relative(pos_old, orn_old, pos_new, orn_new):
     rel_pos = pos_new - pos_old
