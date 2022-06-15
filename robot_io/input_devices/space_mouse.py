@@ -93,7 +93,7 @@ class SpaceMouse:
 
         action = {"motion": (sm_controller_pos, sm_controller_orn, gripper_action), "ref": "rel"}
         # To be compatible with vr input actions. For now there is nothing to pass as record info
-        record_info = None
+        record_info = {"done": False}
         self.clear_events()
 
         return action, record_info

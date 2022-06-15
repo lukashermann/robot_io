@@ -1,12 +1,12 @@
-import logging
 import socket
 import time
 
+import hydra
 import numpy as np
 from math import pi
-from robot_io.robot_interface.wsg50_controller import WSG50Controller
+from robot_io.gripper.wsg50_controller import WSG50Controller
 from robot_io.robot_interface.base_robot_interface import BaseRobotInterface, GripperState
-from robot_io.utils.utils import np_quat_to_scipy_quat, pos_orn_to_matrix, euler_to_quat, quat_to_euler, \
+from robot_io.utils.utils import pos_orn_to_matrix, euler_to_quat, quat_to_euler, \
     matrix_to_pos_orn, xyz_to_zyx
 
 import logging
@@ -31,6 +31,7 @@ TCP = 21
 
 class IIWAInterface(BaseRobotInterface):
     def __init__(self,
+                 gripper,
                  host="localhost",
                  port=50100,
                  use_impedance=True,
@@ -66,7 +67,7 @@ class IIWAInterface(BaseRobotInterface):
         self.set_properties(joint_vel, gripper_rot_vel, joint_acc, cartesian_vel, cartesian_acc, use_impedance,
                             workspace_limits, tcp_name)
         self.neutral_pose = np.array(neutral_pose)
-        self.gripper = WSG50Controller()
+        self.gripper = hydra.utils.instantiate(gripper)
         self.gripper_state = GripperState.OPEN
         self.gripper.open_gripper()
         super().__init__()

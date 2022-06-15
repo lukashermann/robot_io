@@ -2,7 +2,7 @@ _target_: robot_io.input_devices.space_mouse.SpaceMouse
 _recursive_: false
 act_type: 'continuous'
 sensitivity: 100
-mode: '7dof'
+mode: '5dof'
 reference_frame: 'tcp'
 initial_gripper_state: 'open'
 dv: 0.01

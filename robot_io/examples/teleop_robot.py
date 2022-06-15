@@ -11,18 +11,21 @@ def main(cfg):
     Args:
         cfg: Hydra config
     """
-    recorder = hydra.utils.instantiate(cfg.recorder)
+
     robot = hydra.utils.instantiate(cfg.robot)
     env = hydra.utils.instantiate(cfg.env, robot=robot)
     obs = env.reset()
     input_device = hydra.utils.instantiate(cfg.input, robot=robot)
 
-    while True:
-        action, record_info = input_device.get_action()
-        next_obs, _, _, _ = env.step(action)
-        recorder.step(action, obs, record_info)
-        env.render()
-        obs = next_obs
+    done = False
+    with hydra.utils.instantiate(cfg.recorder, env=env) as recorder:
+        while not done:
+            action, record_info = input_device.get_action()
+            next_obs, rew, done, info = env.step(action)
+            recorder.step(obs, action, next_obs, rew, done, info, record_info)
+            env.render()
+            obs = next_obs
+            done = record_info["done"]
 
 
 if __name__ == "__main__":

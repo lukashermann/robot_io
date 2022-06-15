@@ -164,7 +164,11 @@ Robot Teleop instructions:
 5. Robot only moves with dead-man-switch activated
 
 ### Marker Detector
-
+Make sure OpenCV and Eigen are installed:
+```
+$ sudo apt install libopencv-dev python3-opencv
+$ sudo apt install libeigen3-dev
+```
 ```
 $ cd robot_io/marker_detection/apriltag_detection
 $ python setupBatch.py build_ext --inplace

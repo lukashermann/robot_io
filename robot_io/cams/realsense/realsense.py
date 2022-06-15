@@ -125,7 +125,7 @@ class Realsense(Camera):
 def test_cam():
     # Import OpenCV for easy image rendering
     import cv2
-    cam_cfg = OmegaConf.load("../../conf/cams/gripper_cam/framos_highres.yaml")
+    cam_cfg = OmegaConf.load("../../conf/cams/gripper_cam/realsense_d435.yaml")
     cam = hydra.utils.instantiate(cam_cfg)
 
     rgb, depth = cam.get_image()

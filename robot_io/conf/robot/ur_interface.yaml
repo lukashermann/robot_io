@@ -1,0 +1,26 @@
+_target_: robot_io.robot_interface.ur_interface.URInterface
+_recursive_: false
+robot_ip: "192.168.131.40"
+neutral_pose: [ 3.14159, -1.570796,  1.570796, -1.570796, -1.570796, -1.570796]
+workspace_limits: [[-0.5, -0.5, 0], [0.5, 0.5, 0.5]]
+cartesian_speed: 0.1  # [m/s]
+cartesian_acc: 0.5  # [m/s^2]
+joint_speed: 0.5  # [rad/s]
+joint_acc: 0.5  # [rad/s^2]
+tcp_offset: [0, 0, 0.155, 0, 0, 0]  # [X, Y, Z, Rx, Ry, Rz]
+ll: [-6.283185, -6.283185, -6.283185, -6.283185, -6.283185, -6.283185]
+ul: [6.283185, 6.283185, 6.283185, 6.283185, 6.283185, 6.283185]
+
+rel_action_params:
+  relative_action_reference_frame: "desired"  # "current" or "desired"
+  relative_action_control_frame: "tcp"  # "tcp" or "world"
+  relative_pos_clip_threshold: 0.05
+  relative_rot_clip_threshold: 0.3
+  max_ee_pitch: 30  # degrees
+  max_ee_roll: 60  # degrees
+  limit_control_5_dof: true
+  default_orn_x: 3.141593
+  default_orn_y: 0
+
+defaults:
+  - gripper: griplink

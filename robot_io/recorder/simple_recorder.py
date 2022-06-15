@@ -1,5 +1,4 @@
 import os
-import time
 import logging
 import json
 import datetime
@@ -8,6 +7,8 @@ from pathlib import Path
 
 from PIL import Image
 import numpy as np
+import multiprocessing as mp
+from robot_io.recorder.base_recorder import BaseRecorder
 from robot_io.utils.utils import depth_img_to_uint16
 from robot_io.utils.utils import depth_img_from_uint16
 from robot_io.utils.utils import pos_orn_to_matrix
@@ -35,48 +36,61 @@ def count_previous_frames():
     return len(list(Path.cwd().glob("frame*.npz")))
 
 
-class SimpleRecorder:
-    def __init__(self, env, save_dir="", n_digits=6, save_images=False):
+class SimpleRecorder(BaseRecorder):
+    def __init__(self, env, save_dir=None, n_digits=6, save_images=False):
         """
         SimpleRecorder is a recorder to save frames with a simple step function.
         Recordings can be loaded with load_rec_list/PlaybackEnv.
 
         Arguments:
-            save_dir: Directory in which to save
+            save_dir: Directory in which to save, None means working directory
             n_digits: zero padding for files
             save_images: save .jpg image files as well
         """
         self.env = env
-        self.save_dir = save_dir
         self.save_images = save_images
-        self.queue = []
+        self.queue = mp.Queue()
+        self.process = mp.Process(target=self._process_queue, name="RecorderSavingProcess")
+        self.process.start()
+        self.running = True
         self.save_frame_cnt = count_previous_frames()
         self.current_episode_filenames = []
         self.n_digits = n_digits
+        if save_dir is None:
+            save_dir = os.getcwd()
+        self.save_dir = save_dir
         os.makedirs(self.save_dir, exist_ok=True)
+        self._save_info()
+        logging.info("Started SimpleRecorder, saving to %s", self.save_dir)
 
-    def step(self, action, obs, rew, done, info):
+    def step(self, obs=None, action=None, next_obs=None, rew=None, done=None, info=None, record_info=None):
         """
-        Save the data every step.
+        Save action, next_obs, rew, and info.
 
         Args:
-            action: Action used to command the robot.
-            obs: Env observation.
-            rew: Env reward.
-            done: Env done.
-            info:  Env info.
+            obs: Environment observation s.
+            action: Action a chosen according to obs.
+            next_obs: Environment observation s' after applying action a.
+            rew: Environment reward.
+            done: True if environment done.
+            info: Environment info.
+            record_info (dict): Info by input device (e.g. when to start and stop recording).
         """
         filename = f"frame_{self.save_frame_cnt:0{self.n_digits}d}.npz"
         filename = os.path.join(self.save_dir, filename)
         self.current_episode_filenames.append(filename)
         self.save_frame_cnt += 1
-        self.queue.append((filename, action, obs, rew, done, info))
+        self.queue.put((filename, action, obs, rew, done, info))
 
     def _process_queue(self):
         """
         Process function for queue.
         """
-        for msg in self.queue:
+        while True:
+            msg = self.queue.get()
+            if msg == "QUIT":
+                self.running = False
+                break
             filename, action, obs, rew, done, info = msg
             # change datatype of depth images to save storage space
             obs = process_obs(obs)
@@ -85,24 +99,31 @@ class SimpleRecorder:
 
             if self.save_images:
                 img = obs["rgb_gripper"]
-                img_fn = filename.replace(".npz",".jpg")
+                img_fn = filename.replace(".npz", ".jpg")
                 Image.fromarray(img).save(img_fn)
 
     def _save_info(self):
         info_fn = os.path.join(self.save_dir, "env_info.json")
-        env_info = self.env.get_info()
-        env_info["time"] = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+        env_metadata = self.env.metadata
+        env_metadata["time"] = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
 
         with open(info_fn, 'w') as f_obj:
-            json.dump(env_info, f_obj)
+            json.dump(env_metadata, f_obj)
 
         self.env.camera_manager.save_calibration(self.save_dir)
 
-    def _save(self):
-        length = len(self.queue)
-        self._process_queue()
-        self._save_info()
-        print(f"saved {self.save_dir} w/ length {length}")
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type=None, exc_val=None, exc_tb=None):
+        """
+            with ... as ... : logic
+        Returns:
+            None
+        """
+        if self.running:
+            self.queue.put("QUIT")
+            self.process.join()
 
 
 class PlaybackCamera(RobotIOCamera):

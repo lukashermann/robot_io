@@ -81,7 +81,7 @@ class RobotEnv(gym.Env):
     def get_termination(self, obs):
         return False
 
-    def get_info(self, obs, action):
+    def get_info(self, obs=None, action=None):
         info = {}
         return info
 

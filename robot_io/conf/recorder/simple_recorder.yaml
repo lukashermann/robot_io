@@ -1,0 +1,3 @@
+_target_: robot_io.recorder.simple_recorder.SimpleRecorder
+_recursive_: false
+n_digits: 6

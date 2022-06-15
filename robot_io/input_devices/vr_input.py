@@ -159,7 +159,8 @@ class VrInput:
                                  "down": self._button_1_down(event),
                                  "dead_man_switch_triggered": self._dead_mans_switch_triggered(event),
                                  "triggered": self._button_1_triggered(event) and self._button_1_down(event),
-                                 "trigger_release": self._button_1_released(event) and not self.prev_button_info["hold"] and self.prev_button_info["down"]}
+                                 "trigger_release": self._button_1_released(event) and not self.prev_button_info["hold"] and self.prev_button_info["down"],
+                                 "done": False}
         return self.prev_button_info
 
     def _dead_mans_switch_down(self, event):

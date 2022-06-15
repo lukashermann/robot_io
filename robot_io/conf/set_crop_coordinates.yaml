@@ -1,8 +1,8 @@
 # width x height defining the aspect ratio of the cropped region
-resolution: [200, 150]
+resolution: [200, 200]
 
 defaults:
-  - cams/static_cam@cam: kinect4_highres
-#  - cams/gripper_cam@cam: framos_highres
+#  - cams/static_cam@cam: kinect4_highres
+  - cams/gripper_cam@cam: realsense_d435
   - override hydra/job_logging: colorlog
   - override hydra/hydra_logging: colorlog

@@ -1,7 +1,7 @@
 import numpy as np
 
 from robot_io.utils.utils import quat_to_euler, orn_to_matrix, matrix_to_orn, angle_between, to_world_frame, \
-    to_tcp_frame, ReferenceType, restrict_workspace
+    to_tcp_frame, ReferenceType, restrict_workspace, timeit
 
 
 class RelActionControl:
@@ -91,7 +91,8 @@ class RelActionControl:
         else:
             if reference_type != ReferenceType.RELATIVE:
                 self.desired_pos, self.desired_orn = tcp_pos, tcp_orn
-                self.desired_orn = quat_to_euler(self.desired_orn)
+                if len(self.desired_orn) == 4:
+                    self.desired_orn = quat_to_euler(self.desired_orn)
                 if self.limit_control_5_dof:
                     self.desired_orn = self._enforce_5_dof_control(self.desired_orn)
             if self.relative_action_control_frame == "tcp":

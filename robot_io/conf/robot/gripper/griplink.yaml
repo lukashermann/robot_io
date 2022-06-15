@@ -1,0 +1,5 @@
+_target_: robot_io.gripper.griplink_controller.GriplinkController
+_recursive_: false
+gripper_ip: "192.168.1.40"
+gripper_port: 10001
+port: 0  # the internal griplink port, 0...3

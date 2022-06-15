@@ -1,0 +1,7 @@
+_target_: robot_io.gripper.wsg50_controller.WSG50Controller
+_recursive_: false
+gripper_ip: "192.168.42.20"
+gripper_port: 6666
+min_opening_width: 0
+max_opening_width: 100
+opening_width_offset: 0.0088

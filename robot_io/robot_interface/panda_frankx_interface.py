@@ -297,29 +297,10 @@ class PandaFrankXInterface(BaseRobotInterface):
 
         Args:
             canvas_width: Display width in pixel.
-
         """
-        canvas = np.ones((300, canvas_width, 3))
-        forces = self.get_state()["force_torque"]
         contact = np.array(self.libfranka_params.contact_force_threshold)
         collision = np.array(self.libfranka_params.collision_force_threshold)
-        left = 10
-        right = canvas_width - left
-        width = right - left
-        height = 30
-        y = 10
-        for i, (lcol, lcon, f, ucon, ucol) in enumerate(zip(-collision, -contact, forces, contact, collision)):
-            cv2.rectangle(canvas, [left, y], [right, y + height], [0, 0, 0], thickness=2)
-            force_bar_pos = int(left + width * (f - lcol) / (ucol - lcol))
-            cv2.line(canvas, [force_bar_pos, y], [force_bar_pos, y + height], thickness=4, color=[0, 0, 1])
-            ucon_bar_pos = int(left + width * (ucon - lcol) / (ucol - lcol))
-            cv2.line(canvas, [ucon_bar_pos, y], [ucon_bar_pos, y + height], thickness=2, color=[1, 0, 0])
-            lcon_bar_pos = int(left + width * (lcon - lcol) / (ucol - lcol))
-            cv2.line(canvas, [lcon_bar_pos, y], [lcon_bar_pos, y + height], thickness=2, color=[1, 0, 0])
-
-            y += height + 10
-        cv2.imshow("external_forces", canvas)
-        cv2.waitKey(1)
+        self._visualize_external_forces(contact, collision, canvas_width)
 
 
 @hydra.main(config_path="../conf", config_name="panda_teleop.yaml")

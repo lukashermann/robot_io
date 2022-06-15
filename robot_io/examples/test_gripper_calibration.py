@@ -23,9 +23,9 @@ def main(cfg):
     robot = hydra.utils.instantiate(cfg.robot)
     T_tcp_cam = cam.get_extrinsic_calibration(robot.name)
 
-    visualize_calibration_gripper_cam(cam, T_tcp_cam)
-    exit()
+    # visualize_calibration_gripper_cam(cam, T_tcp_cam)
     robot.move_to_neutral()
+    robot.open_gripper()
     pos, orn = robot.get_tcp_pos_orn()
     clicked_point = None
 

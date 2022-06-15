@@ -6,6 +6,8 @@ import multiprocessing as mp
 import threading
 import logging
 from pathlib import Path
+
+from robot_io.recorder.base_recorder import BaseRecorder
 from robot_io.utils.utils import depth_img_to_uint16
 
 try:
@@ -35,7 +37,7 @@ def count_previous_frames():
     return len(list(Path.cwd().glob("frame*.npz")))
 
 
-class VrRecorder:
+class VrRecorder(BaseRecorder):
     """
     Save observations and robot trajectories when teleoperating the robot with an HTC Vive VR controller.
     Press button 1 to start and stop recording.
@@ -43,11 +45,12 @@ class VrRecorder:
 
     Args:
         n_digits: Zero padding for files.
+        env: Environment, not used here.
     """
-    def __init__(self, n_digits):
+    def __init__(self, n_digits, env=None):
         self.recording = False
         self.queue = mp.Queue()
-        self.process = mp.Process(target=self.process_queue, name="MultiprocessingStorageWorker")
+        self.process = mp.Process(target=self._process_queue, name="MultiprocessingStorageWorker")
         self.process.start()
         self.running = True
         self.save_frame_cnt = count_previous_frames()
@@ -62,12 +65,12 @@ class VrRecorder:
         except FileNotFoundError:
             self.ep_start_end_ids = []
 
-    def step(self, action, obs, record_info):
+    def step(self, obs, action, next_obs, rew, done, info, record_info):
         if record_info is None or "dead_man_switch_triggered" not in record_info:
             return
         if record_info["dead_man_switch_triggered"]:
             self.dead_man_switch_was_down = True
-        if record_info["trigger_release"] and not self.recording and not self.is_deleting:
+        if record_info["trigger_release"] and not self.recording and not self._is_deleting:
             if not self.dead_man_switch_was_down:
                 self.tts.say("please press the dead man switch once before starting to record")
             else:
@@ -78,27 +81,27 @@ class VrRecorder:
         elif record_info["trigger_release"] and self.recording:
             self.recording = False
             self.ep_start_end_ids[-1].append(self.save_frame_cnt)
-            self.save(action, obs, True)
+            self._save(action, obs, True)
             self.tts.say("finish recording")
         if record_info["hold_event"]:
             if self.recording:
                 self.recording = False
-            self.delete_last_episode()
+            self._delete_last_episode()
         if self.recording:
             assert action is not None
-            self.save(action, obs, False)
+            self._save(action, obs, False)
 
     @property
-    def is_deleting(self):
+    def _is_deleting(self):
         return self.delete_thread is not None and self.delete_thread.is_alive()
 
-    def delete_last_episode(self):
-        self.delete_thread = threading.Thread(target=self._delete_last_episode, daemon=True)
+    def _delete_last_episode(self):
+        self.delete_thread = threading.Thread(target=self._delete_worker, daemon=True)
         self.delete_thread.start()
         self.ep_start_end_ids = self.ep_start_end_ids[:-1]
         np.save("ep_start_end_ids.npy", self.ep_start_end_ids)
 
-    def _delete_last_episode(self):
+    def _delete_worker(self):
         log.info("Delete episode")
         while not self.queue.empty():
             log.info("Wait until files are saved")
@@ -111,7 +114,7 @@ class VrRecorder:
         self.save_frame_cnt -= num_frames
         self.current_episode_filenames = []
 
-    def save(self, action, obs, done):
+    def _save(self, action, obs, done):
         filename = f"frame_{self.save_frame_cnt:0{self.n_digits}d}.npz"
         self.current_episode_filenames.append(filename)
         self.save_frame_cnt += 1
@@ -119,7 +122,7 @@ class VrRecorder:
         if done:
             np.save("ep_start_end_ids.npy", self.ep_start_end_ids)
 
-    def process_queue(self):
+    def _process_queue(self):
         """
         Process function for queue.
         Returns:

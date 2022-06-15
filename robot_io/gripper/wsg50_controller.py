@@ -52,15 +52,18 @@ error_codes = ['E_SUCCESS',
 
 
 class WSG50Controller:
-    def __init__(self, max_opening_width=100, min_opening_width=0):
+    def __init__(self, gripper_ip="192.168.42.20", gripper_port=6666, min_opening_width=0, max_opening_width=100, opening_width_offset=0.0088):
         self._request_opening_width_and_force = Event()
         self._open_gripper_event = Event()
         self._close_gripper_event = Event()
         self._stop_event = Event()
         self._opening_width = Value('d', -1)
         self._force = Value('d', -1)
-        self._controller_thread = GripperControllerThread(max_opening_width,
+        self._controller_thread = GripperControllerThread(gripper_ip,
+                                                          gripper_port,
                                                           min_opening_width,
+                                                          max_opening_width,
+                                                          opening_width_offset,
                                                           self._request_opening_width_and_force,
                                                           self._close_gripper_event, self._open_gripper_event,
                                                           self._stop_event,
@@ -94,14 +97,24 @@ class WSG50Controller:
 
 
 class GripperControllerThread(threading.Thread):
-    def __init__(self, max_opening_width, min_opening_width, request, close_gripper_event, open_gripper_event, stop_event, opening_width, force):
+    def __init__(self,
+                 gripper_ip,
+                 gripper_port,
+                 min_opening_width,
+                 max_opening_width,
+                 opening_width_offset,
+                 request,
+                 close_gripper_event,
+                 open_gripper_event,
+                 stop_event,
+                 opening_width,
+                 force):
         # self.opening_width_offset = 0.004762348175048828 # without rubber
-        self.opening_width_offset = 0.0088
+        self.opening_width_offset = opening_width_offset
         self.max_opening_width = max_opening_width
         self.min_opening_width = min_opening_width
-        self.own_address = ("localhost", 50601)
-        self.gripper_address = "192.168.42.20"
-        self.gripper_port = 6666
+        self.gripper_address = gripper_ip
+        self.gripper_port = gripper_port
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
         self.socket.connect((self.gripper_address, self.gripper_port))

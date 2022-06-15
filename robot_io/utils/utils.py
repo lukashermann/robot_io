@@ -54,6 +54,22 @@ def quat_to_euler(quat):
     return R.from_quat(quat).as_euler('xyz')
 
 
+def rotvec_to_euler(rotvec):
+    return R.from_rotvec(rotvec).as_euler("xyz")
+
+
+def euler_to_rotvec(euler_angles):
+    return R.from_euler("xyz", euler_angles).as_rotvec()
+
+
+def rotvec_to_quat(rotvec):
+    return R.from_rotvec(rotvec).as_quat()
+
+
+def quat_to_rotvec(quat):
+    return R.from_quat(quat).as_rotvec()
+
+
 def xyz_to_zyx(orn):
     """xyz euler angles to zyx euler"""
     return orn[::-1]

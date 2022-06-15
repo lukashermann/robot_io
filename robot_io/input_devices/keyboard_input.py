@@ -1,4 +1,5 @@
 import os
+import time
 
 import numpy as np
 import pygame
@@ -30,14 +31,22 @@ class KeyboardInput:
         self.pressed_keys = []
         self.mode = mode
         self.done = False
+
+        self.speeds = [1.0, 0.5, .25, .1, .05]
+        self.speed_index = 0
+
+        print("Starting Keyboard Input:")
+        print("dv =", dv)
+        print("drot =", drot)
+
         self.movement_keys = {ord('w'): (dv, 0, 0, 0, 0, 0, 0),
                               ord('s'): (-dv, 0, 0, 0, 0, 0, 0),
                               ord('a'): (0, -dv, 0, 0, 0, 0, 0),
                               ord('d'): (0, dv, 0, 0, 0, 0, 0),
                               ord('x'): (0, 0, dv, 0, 0, 0, 0),
                               ord('z'): (0, 0, -dv, 0, 0, 0, 0),
-                              ord('i'): (0, 0, dv, 0, 0, 0, 0),
-                              ord('k'): (0, 0, -dv, 0, 0, 0, 0),
+                              ord('i'): (0, 0, -dv, 0, 0, 0, 0),
+                              ord('k'): (0, 0, dv, 0, 0, 0, 0),
                               ord('e'): (0, 0, 0, 0, 0, drot, 0),
                               ord('q'): (0, 0, 0, 0, 0, -drot, 0),
                               }
@@ -46,11 +55,15 @@ class KeyboardInput:
             self.movement_keys[1073741905] = (0, 0, 0, 0, drot, 0, 0)
             self.movement_keys[1073741904] = (0, 0, 0, -drot, 0, 0, 0)
             self.movement_keys[1073741903] = (0, 0, 0, drot, 0, 0, 0)
+
         self.gripper_key = ord('\t')
         self.prev_gripper_key_pressed = False
-
         # convert str or GripperState to GripperState
         self.gripper_state = GI.to_gripper_state(initial_gripper_state)
+
+        self.modify_keys = {ord('h'): self.print_help,
+                            1073741910: self.decrease_motion,
+                            1073741911: self.increase_motion}
 
         # init pygame stuff
         icon_fn = os.path.join(os.path.dirname(__file__), "assets/keyboard_icon.png")
@@ -82,9 +95,6 @@ class KeyboardInput:
 
         return action, record_info
 
-    def get_done(self):
-        return self.done
-
     def _handle_keyboard_events(self):
         """
         Detect keyboard events and compose action.
@@ -102,8 +112,10 @@ class KeyboardInput:
                 elif event.key == self.gripper_key and not self.prev_gripper_key_pressed:
                     self.prev_gripper_key_pressed = True
                     self.gripper_state = GI.toggle(self.gripper_state)
-                elif event.key == ord('h'):
-                    self.print_help()
+                elif event.key in self.modify_keys:
+                    self.modify_keys[event.key]()
+                else:
+                    print("Unassigned key:", event.key)
 
             elif event.type == pygame.KEYUP:
                 if event.key in self.movement_keys:
@@ -113,7 +125,9 @@ class KeyboardInput:
 
         actions = [self.movement_keys[key] for key in self.pressed_keys]
         actions += [(0, 0, 0, 0, 0, 0, 0)]
-        action = np.sum(actions, axis=0)
+        action = np.sum(actions, axis=0, dtype=float)
+        # scale movements, but not gripper action.
+        action *= self.speeds[self.speed_index]
 
         if self.reference_frame == "world":
             action[1] *= -1
@@ -123,6 +137,8 @@ class KeyboardInput:
 
         # gripper action
         action[-1] = self.gripper_state.value
+
+        pygame.display.update()
 
         assert action.shape == (7,)
         return action
@@ -139,6 +155,20 @@ class KeyboardInput:
         print("use WASD to move the robot in the xy-plane, X/Z to move the robot in z-direction and")
         print("Q/E to rotate around the z-axis.")
         print("Use the arrow keys to pitch and roll the end-effector.")
+
+    def decrease_motion(self):
+        if self.speed_index < len(self.speeds)-1:
+            self.speed_index += 1
+            print("decreasing motion: now scaling speeds by", self.speeds[self.speed_index])
+        else:
+            print("minimum speed already reached")
+
+    def increase_motion(self):
+        if self.speed_index > 0:
+            self.speed_index -= 1
+            print("increasing motion: now scaling speeds by", self.speeds[self.speed_index])
+        else:
+            print("maximum speed already reached")
 
 
 def keyboard_control(env):
@@ -163,6 +193,7 @@ def keyboard_control(env):
 
 if __name__ == "__main__":
     keyboard = KeyboardInput()
-    while True:
+    while not keyboard.done:
         # keyboard.print_all_events()
         print(keyboard.get_action())
+        time.sleep(.5)

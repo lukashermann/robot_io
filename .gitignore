@@ -7,4 +7,5 @@ robot_io/marker_detection/apriltag_detection/AprilTagDetectorBatch.cpython-38-x8
 robot_io/marker_detection/apriltag_detection/AprilTagDetectorBatch.cpp
 librealsense2/
 robot_io/control/outputs/
-robot_io/calibration/outputs/2022-04-14/15-46-40/.hydra/hydra.yaml
+robot_io/calibration/outputs/
+robot_io/examples/outputs/
