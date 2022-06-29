@@ -1,3 +1,4 @@
+import logging
 import socket
 import time
 
@@ -56,8 +57,17 @@ class GriplinkController:
 		cmd_string = f"VALUE[{port}][{index}]?"
 		ret_string = f"VALUE[{port}][{index}]="
 		self._send_msg(cmd_string)
-		ret = self._recv_msg()
-		tmp = int(ret.lstrip(ret_string))
+		tmp = -1000
+		for i in range(3):
+			ret = self._recv_msg()
+			if ret == "ACK":
+				# this is the acknowledgement of the last command, re-try
+				continue
+			elif ret_string in ret:
+				tmp = int(ret.lstrip(ret_string))
+				break
+		if tmp == -1000:
+			logging.warning("Invalid gripper width query, defaulting to -1.")
 		if index == 0:
 			# device return micrometers, convert to mm
 			tmp /= 1000
@@ -97,8 +107,10 @@ if __name__ == "__main__":
 	gl = GriplinkController()
 	print(gl.get_opening_width())
 	gl.close_gripper(blocking=True)
+	print(gl.get_opening_width())
 	gl.open_gripper(blocking=False)
 	# time.sleep(1)
+	print(gl.get_opening_width())
 
 
 
