@@ -35,6 +35,17 @@ python realsense.py  # test script
 - b) Use Ethernet sockets on the ceiling for PoE. 
 
 
+### Marker Detector
+Make sure OpenCV and Eigen are installed:
+```
+sudo apt install libopencv-dev python3-opencv
+sudo apt install libeigen3-dev
+pip install Cython
+cd robot_io/marker_detection/apriltag_detection
+python setupBatch.py build_ext --inplace
+```
+
+
 # Robots
 
 ## KUKA iiwa
@@ -132,28 +143,28 @@ python robot_io/input_devices/space_mouse.py
 
 ### Install Bullet
 ```
-$ git clone https://github.com/bulletphysics/bullet3.git
-$ cd bullet3
+git clone https://github.com/bulletphysics/bullet3.git
+cd bullet3
 
 # Optional: patch bullet for selecting correct rendering device
 # (only relevant when using EGL and multi-gpu training)
-$ wget https://raw.githubusercontent.com/BlGene/bullet3/egl_remove_works/examples/OpenGLWindow/EGLOpenGLWindow.cpp -O examples/OpenGLWindow/EGLOpenGLWindow 
+wget https://raw.githubusercontent.com/BlGene/bullet3/egl_remove_works/examples/OpenGLWindow/EGLOpenGLWindow.cpp -O examples/OpenGLWindow/EGLOpenGLWindow 
 
 # For building Bullet for VR  add -DUSE_OPENVR=ON to line 8 of build_cmake_pybullet_double.sh
 # Run
-$ ./build_cmake_pybullet_double.sh
+./build_cmake_pybullet_double.sh
 
-$ pip install numpy  # important to have numpy installed before installing bullet
-$ pip install -e .  # effectively this is building bullet a second time, but importing is easier when installing with pip
+pip install numpy  # important to have numpy installed before installing bullet
+pip install -e .  # effectively this is building bullet a second time, but importing is easier when installing with pip
 
 # add alias to your bashrc
 alias bullet_vr="~/.steam/steam/ubuntu12_32/steam-runtime/run.sh </PATH/TO/BULLET/>bullet3/build_cmake/examples/SharedMemory/App_PhysicsServer_SharedMemory_VR"
 
 # to test VR control
 # make sure SteamVR is started
-$ bullet_vr
-$ cd <PATH/TO/ROBOTIO>/robot_io/robot_io/control
-$ python teleop_robot.py
+./bullet_vr
+cd <PATH/TO/ROBOTIO>/robot_io/robot_io/control
+python teleop_robot.py
 ```
 
 Robot Teleop instructions:
@@ -163,13 +174,13 @@ Robot Teleop instructions:
 4. Robot should reset to home position
 5. Robot only moves with dead-man-switch activated
 
-### Marker Detector
-Make sure OpenCV and Eigen are installed:
+
+# Sensors
+
+## Digit Sensor
+This is for installing the Facebook Digit Sensor
+https://digit.ml/.
+
 ```
-$ sudo apt install libopencv-dev python3-opencv
-$ sudo apt install libeigen3-dev
-```
-```
-$ cd robot_io/marker_detection/apriltag_detection
-$ python setupBatch.py build_ext --inplace
+pip install digit-interface
 ```

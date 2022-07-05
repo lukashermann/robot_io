@@ -16,7 +16,7 @@ class Camera:
         self.name = name
 
     def get_image(self):
-        """get the the current rgb and depth image as float32 numpy arrays"""
+        """get the current rgb and depth image as float32 numpy arrays"""
         rgb, depth = self._get_image()
         rgb = self._crop_and_resize(rgb)
         depth = self._crop_and_resize(depth)
@@ -160,6 +160,7 @@ class Camera:
     def draw_point(img, point, color=(255, 0, 0)):
         img[point[1], point[0]] = color
 
+    # TODO(max): remove robot_name argument.
     def get_extrinsic_calibration(self, robot_name):
         calib_folder = get_git_root(__file__) / "robot_io/calibration/calibration_files"
         calib_files = list(calib_folder.glob(f"{robot_name}_{self.name}*npy"))

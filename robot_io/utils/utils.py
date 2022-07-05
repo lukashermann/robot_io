@@ -1,16 +1,17 @@
 import math
+import logging
 from enum import Enum
 from pathlib import Path
 
 import cv2
 import git
-import sys
 import time
 import quaternion
-import hydra
 import numpy as np
-import multiprocessing as mp
 from scipy.spatial.transform.rotation import Rotation as R
+
+
+log = logging.getLogger(__name__)
 
 
 def z_angle_between(a, b):
@@ -208,31 +209,6 @@ def restrict_workspace(workspace_limits, target_pos):
         return clipped_pos
     else:
         raise ValueError
-
-import logging
-
-log = logging.getLogger(__name__)
-
-
-class TextToSpeech:
-    def __init__(self):
-        self.queue = mp.Queue()
-        self.process = mp.Process(target=self.tts_worker, name="TTS_worker")
-        self.process.daemon = True
-        self.process.start()
-
-    def say(self, text):
-        log.info(text)
-        self.queue.put(text)
-
-    def tts_worker(self):
-        import pyttsx3
-        engine = pyttsx3.init()
-        engine.setProperty("rate", 175)
-        while True:
-            text = self.queue.get()
-            engine.say(text)
-            engine.runAndWait()
 
 
 class FpsController:

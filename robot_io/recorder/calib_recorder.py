@@ -1,13 +1,12 @@
 import os
 import shutil
-import time
 from pathlib import Path
 
 import numpy as np
 import multiprocessing as mp
-import threading
 import logging
-from robot_io.utils.utils import TextToSpeech
+from robot_io.utils.text_to_speech import TextToSpeech
+
 
 # A logger for this file
 log = logging.getLogger(__name__)

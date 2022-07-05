@@ -9,17 +9,7 @@ from pathlib import Path
 
 from robot_io.recorder.base_recorder import BaseRecorder
 from robot_io.utils.utils import depth_img_to_uint16
-
-try:
-    import pyttsx3
-    from robot_io.utils.utils import TextToSpeech
-except ModuleNotFoundError:
-    class TextToSpeech:
-        """
-        Print text if TextToSpeech unavailable.
-        """
-        def say(self, x):
-            print(x)
+from robot_io.utils.text_to_speech import TextToSpeech
 
 
 # A logger for this file
