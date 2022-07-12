@@ -8,7 +8,6 @@ Example:
     pb_env = PlaybackEnv.freeze(env)                # save env state
     pb_pos, pb_orn = pb_env.robot.get_tcp_pos_orn() # access recording like live env.
 """
-import json
 import logging
 from glob import glob
 from pathlib import Path
@@ -177,44 +176,35 @@ class PlaybackEnvStep:
 
 
 class PlaybackEnv:
-    def __init__(self, recording_dir, keep_dict="file"):
+    def __init__(self, recording_dir, load="all", n_digits=6):
         """
         A masked recording where we step between frames that are included in keep_dict,
         skipping over those omitted.
 
         Arguments:
             recording_dir: directory where the recording is found
-            keep_dict: file, None, or dictionary
+            load: "all" or list of ints which are converted to filenames
         """
         # load camera info, done so that we jus have to load once
         if not Path(recording_dir).is_dir():
             raise FileNotFoundError(f"directory not found: {recording_dir}")
 
-        camera_info = load_camera_info(recording_dir)
-        files = sorted(glob(f"{recording_dir}/frame_*.npz"))
-        self.steps = [PlaybackEnvStep(fn, camera_info=camera_info) for fn in files]
+        cam_info = load_camera_info(recording_dir)
+        cnt2fn = lambda cnt: Path(recording_dir) / f"frame_{cnt:0{n_digits}d}.npz"
+        if load == "all":
+            # load all frames, first have to find which ones there are.
+            files = sorted(glob(f"{recording_dir}/frame_*.npz"))
+            self.steps = [PlaybackEnvStep(fn, camera_info=cam_info) for fn in files]
+            self.keep_indexes = sorted(self.keep_dict.keys())
 
-        # first check if we find these things on files
-        if keep_dict == "file":
-            keep_dict_fn = Path(recording_dir) / "servo_keep.json"
-            try:
-                with open(keep_dict_fn) as f_obj:
-                    keep_dict_from_file = json.load(f_obj)
-                # undo json mangling
-                keep_dict_e = {int(key): val for key, val in keep_dict_from_file.items()}
-
-            except FileNotFoundError:
-                logging.warning(f"Couldn't find {keep_dict_fn}, servoing will take ages")
-                keep_dict_e = {k: None for k in range(len(self.steps))}
-
-        elif keep_dict is None:
-            keep_dict_e = {k: None for k in range(len(self.steps))}
+        elif isinstance(load, list):
+            # load keyframes, first have to find which ones they are.
+            self.keep_indexes = sorted(load)
+            self.steps = {}
+            for cnt in self.keep_indexes:
+                self.steps[cnt] = PlaybackEnvStep(cnt2fn(cnt), camera_info=cam_info)
         else:
-            assert isinstance(keep_dict, dict)
-            keep_dict_e = keep_dict
-
-        self.keep_dict = keep_dict_e
-        self.keep_indexes = sorted(self.keep_dict.keys())
+            raise ValueError
 
         self.index_keep = 0  # where we are in self.keep_dict
         self.index = self.keep_indexes[0]  # where to index in self.steps
@@ -236,10 +226,17 @@ class PlaybackEnv:
     def step(self):
         self.index_keep += 1
         self.index = self.keep_indexes[np.clip(self.index_keep, 0, len(self.keep_indexes) - 1)]
-        assert not self.index > len(self.steps) - 1
+        if isinstance(self.steps, list):
+            assert not self.index > len(self.steps) - 1
 
     def to_list(self):
         return self.steps
+
+    def get_max_frame(self):
+        if isinstance(self.steps, list):
+            return len(self.steps) - 1
+        if isinstance(self.steps, dict):
+            return sorted(self.steps.keys())[-1]
 
     # In theory this function should be in the PlaybackRecorder class, in practice it's a
     # bit more convenient to have it here.
