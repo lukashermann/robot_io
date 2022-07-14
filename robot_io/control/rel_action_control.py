@@ -64,7 +64,7 @@ class RelActionControl:
 
         Args:
             rel_action_pos: Position increment (x,y,z) in meter.
-            rel_action_orn: Orientation increment (α,β,γ) in rad.
+            rel_action_orn: Orientation increment as euler angles (α,β,γ) in rad or quaternion (x,y,z,w).
             state: Robot state dict.
             reference_type (enum): RELATIVE, ABSOLUTE or JOINT.
 
@@ -72,31 +72,48 @@ class RelActionControl:
             abs_target_pos: absolute target position (x,y,z).
             abs_target_orn: absolute target orientation (α,β,γ).
         """
+        assert len(rel_action_pos) == 3
+        if len(rel_action_orn) == 4:
+            rel_action_orn = quat_to_euler(rel_action_orn)
+
         tcp_pos, tcp_orn, joint_positions = state["tcp_pos"], state["tcp_orn"], state["joint_positions"]
+
         if self.limit_control_5_dof:
-            rel_action_orn = self._enforce_limit_gripper_joint(joint_positions, rel_action_orn)
+            # limit control to rotations around gripper z-axis
             rel_action_orn[:2] = 0
+            # clip relative actions that would violate the limits of the last joint (gripper joint)
+            rel_action_orn = self._enforce_limit_gripper_joint(joint_positions, rel_action_orn)
+        # if a contact is detected, avoid moving the robot further in the direction of the contact
         rel_action_pos, rel_action_orn = self._restrict_action_if_contact(rel_action_pos, rel_action_orn, state)
 
+        # relative actions are interpreted w.r.t. the current measured tcp pose
         if self.relative_action_reference_frame == "current":
             if self.relative_action_control_frame == "tcp":
+                # in case relative actions are specified in tcp frame, convert to world frame.
                 rel_action_pos, rel_action_orn = to_world_frame(rel_action_pos, rel_action_orn, tcp_orn)
             tcp_orn = quat_to_euler(tcp_orn)
+            # apply relative action
             abs_target_pos = tcp_pos + rel_action_pos
             abs_target_orn = matrix_to_orn(orn_to_matrix(rel_action_orn) @ orn_to_matrix(tcp_orn))
             if self.limit_control_5_dof:
+                # if control is limited to rotations around tcp z-axis,
+                # set the tcp rotation around x and y-axis to default values
                 abs_target_orn = self._enforce_5_dof_control(abs_target_orn)
             abs_target_pos = restrict_workspace(self.workspace_limits, abs_target_pos)
             return abs_target_pos, abs_target_orn
+        # relative actions are interpreted w.r.t. a desired (virtual) tcp pose
         else:
             if reference_type != ReferenceType.RELATIVE:
+                # when changing from absolute control to relative control, reset desired pose
                 self.desired_pos, self.desired_orn = tcp_pos, tcp_orn
                 if len(self.desired_orn) == 4:
                     self.desired_orn = quat_to_euler(self.desired_orn)
                 if self.limit_control_5_dof:
                     self.desired_orn = self._enforce_5_dof_control(self.desired_orn)
             if self.relative_action_control_frame == "tcp":
+                # in case relative actions are specified in tcp frame, convert to world frame.
                 rel_action_pos, rel_action_orn = to_world_frame(rel_action_pos, rel_action_orn, self.desired_orn)
+            # apply relative action
             self.desired_pos, desired_orn = self._apply_to_desired_pose(rel_action_pos, rel_action_orn, tcp_pos, tcp_orn)
             self.desired_orn = self._restrict_orientation(desired_orn)
             self.desired_pos = restrict_workspace(self.workspace_limits, self.desired_pos)

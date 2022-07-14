@@ -1,15 +1,21 @@
 _target_: robot_io.robot_interface.ur_interface.URInterface
 _recursive_: false
 robot_ip: "192.168.131.40"
-neutral_pose: [ 3.14159, -1.570796,  1.570796, -1.570796, -1.570796, -1.570796]
-workspace_limits: [[-0.5, -0.5, 0], [0.5, 0.5, 0.5]]
-cartesian_speed: 0.1  # [m/s]
-cartesian_acc: 0.5  # [m/s^2]
-joint_speed: 0.5  # [rad/s]
-joint_acc: 0.5  # [rad/s^2]
-tcp_offset: [0, 0, 0.155, 0, 0, 0]  # [X, Y, Z, Rx, Ry, Rz]
 ll: [-6.283185, -6.283185, -6.283185, -6.283185, -6.283185, -6.283185]
 ul: [6.283185, 6.283185, 6.283185, 6.283185, 6.283185, 6.283185]
+tcp_offset: [0, 0, 0.155, 0, 0, 0]  # [X, Y, Z, Rx, Ry, Rz]
+neutral_pose: [ 3.14159, -1.570796,  1.570796, -1.570796, -1.570796, -1.570796]
+workspace_limits: [[-0.5, -0.5, 0], [0.5, 0.5, 0.5]]
+cartesian_speed: 0.1  # [m/s]  used for lin motions
+cartesian_acc: 0.5  # [m/s^2]  used for lin motions
+joint_speed: 0.5  # [rad/s]  used for ptp motions
+joint_acc: 0.5  # [rad/s^2]  used for ptp motions, .5 for debug .8 for running?
+control_time: 0.05  # [s] time when the command is controlling the robot
+lookahead_time: 0.2  # [s] smoothens the trajectory with this [0.03, 02]
+gain: 100  # proportional gain for following target position, range [100,2000]
+servo_max_distance_threshold_pos: 0.03  # [m] max distance between target and current pos for servoing
+servo_max_distance_threshold_orn: 0.2  # [rad] max distance between target and current orn for servoing
+contact_force_threshold: [10, 10, 10, 10, 10, 10]  # [N]
 
 rel_action_params:
   relative_action_reference_frame: "desired"  # "current" or "desired"
@@ -18,7 +24,7 @@ rel_action_params:
   relative_rot_clip_threshold: 0.3
   max_ee_pitch: 30  # degrees
   max_ee_roll: 60  # degrees
-  limit_control_5_dof: true
+  limit_control_5_dof: false
   default_orn_x: 3.141593
   default_orn_y: 0
 

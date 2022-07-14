@@ -2,9 +2,8 @@ import time
 
 import gym
 import hydra
-import numpy as np
 from robot_io.input_devices.keyboard_input import keyboard_control
-from robot_io.utils.utils import FpsController, restrict_workspace, timeit
+from robot_io.utils.utils import FpsController, restrict_workspace
 
 
 class RobotEnv(gym.Env):
@@ -14,9 +13,11 @@ class RobotEnv(gym.Env):
 
     Args:
         robot: Robot interface.
+        camera_manager_cfg: camera manager configuration
         workspace_limits: Workspace limits defined as a bounding box or as hollow cylinder.
+        freq: [Hz] frequency with which to control robot.
+        show_fps: print the FPS
     """
-
     def __init__(
         self,
         robot,
@@ -107,21 +108,19 @@ class RobotEnv(gym.Env):
         assert isinstance(action, dict) and len(action["motion"]) == 3
 
         target_pos, target_orn, gripper_action = action["motion"]
-        ref = action["ref"]
+        ref = action.get("ref", "abs")
+        blocking = action.get("blocking", True)
+        path = action.get("path", "lin")
+        impedance = action.get("impedance", False)
 
         if ref == "abs":
             target_pos = restrict_workspace(self.workspace_limits, target_pos)
-            # TODO: use LIN for panda
-            self.robot.move_async_cart_pos_abs_lin(target_pos, target_orn)
-        elif ref == "rel":
-            self.robot.move_async_cart_pos_rel_lin(target_pos, target_orn)
-        else:
-            raise ValueError
+        self.robot.move_cart_pos(target_pos, target_orn, ref=ref, path=path, blocking=blocking, impedance=impedance)
 
         if gripper_action == 1:
-            self.robot.open_gripper()
+            self.robot.open_gripper(blocking=blocking)
         elif gripper_action == -1:
-            self.robot.close_gripper()
+            self.robot.close_gripper(blocking=blocking)
         else:
             raise ValueError
 
@@ -152,6 +151,7 @@ class RobotEnv(gym.Env):
             mode (str): the mode to render with
         """
         if mode == "human":
-            self.camera_manager.render()
             self.robot.visualize_joint_states()
             self.robot.visualize_external_forces()
+            self.camera_manager.render()
+

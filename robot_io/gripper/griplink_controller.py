@@ -2,6 +2,8 @@ import logging
 import socket
 import time
 
+from robot_io.utils.utils import timeit
+
 commands = dict(id=("ID?", str),
 				serial_number=("SN?", str),
 				label=("LABEL?", str),
@@ -100,6 +102,7 @@ class GriplinkController:
 	def _recv_msg(self):
 		raw_msg = self.socket.recvfrom(256)[0]
 		msg = raw_msg.decode("ASCII").lstrip("\n")
+		msg = [x for x in msg.split("\n") if len(x)][-1]
 		return msg
 
 

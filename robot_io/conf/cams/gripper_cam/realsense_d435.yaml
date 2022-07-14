@@ -4,8 +4,8 @@ name: d435
 fps: 30
 img_type: "rgb_depth"
 resolution: [640, 480]
-resize_resolution: [300, 300]
-crop_coords: [0, 323, 315, 638]
+#resize_resolution: [300, 300]
+#crop_coords: [0, 323, 315, 638]
 params:
   brightness: 3.0
   contrast: 50.0

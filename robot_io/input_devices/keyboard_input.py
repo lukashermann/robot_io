@@ -88,10 +88,16 @@ class KeyboardInput:
             action (dict): Keyboard action.
             record_info: None (to be consistent with other input devices).
         """
-        raw_action = self._handle_keyboard_events()
-        action = {"motion": np.split(raw_action, [3, 6]), "ref": "rel"}
+        raw_action, extra_keys = self._handle_keyboard_events()
+        action = {"motion": np.split(raw_action, [3, 6]),
+                  "ref": "rel",
+                  "path": "lin",
+                  "blocking": False,
+                  "impedance": False}
         # To be compatible with vr input actions. For now there is nothing to pass as record info
         record_info = {"done": self.done}
+        if len(extra_keys) > 0:
+            record_info["extra_keys"] = extra_keys
 
         return action, record_info
 
@@ -103,6 +109,7 @@ class KeyboardInput:
             Action as a numpy array of shape (7,).
         """
         pressed_once_keys = []
+        extra_keys = set()
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN:
                 if event.key in self.movement_keys:
@@ -116,6 +123,8 @@ class KeyboardInput:
                     self.modify_keys[event.key]()
                 else:
                     print("Unassigned key:", event.key)
+                    extra_keys.add(event.unicode)
+
 
             elif event.type == pygame.KEYUP:
                 if event.key in self.movement_keys:
@@ -141,7 +150,7 @@ class KeyboardInput:
         pygame.display.update()
 
         assert action.shape == (7,)
-        return action
+        return action, extra_keys
 
     @staticmethod
     def print_all_events():

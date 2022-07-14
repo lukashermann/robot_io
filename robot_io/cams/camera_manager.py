@@ -95,14 +95,15 @@ class CameraManager:
         return imgcanvas
 
     def render(self):
-        if "rgb_gripper" in self.obs:
-            cv2.imshow("rgb_gripper", upscale(self.obs["rgb_gripper"][:, :, ::-1]))
+        # call rgb imshow last, so these appear on top
         if "depth_gripper" in self.obs:
             depth_img_gripper = self.normalize_depth(self.obs["depth_gripper"])
             depth_img_gripper = cv2.applyColorMap(depth_img_gripper, cv2.COLORMAP_JET)
             cv2.imshow("depth_gripper", upscale(depth_img_gripper))
         if "rgb_static" in self.obs:
             cv2.imshow("rgb_static", upscale(self.obs["rgb_static"][:, :, ::-1]))
+        if "rgb_gripper" in self.obs:
+            cv2.imshow("rgb_gripper", upscale(self.obs["rgb_gripper"][:, :, ::-1]))
         cv2.waitKey(1)
 
 

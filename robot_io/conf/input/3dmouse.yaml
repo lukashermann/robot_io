@@ -5,5 +5,5 @@ sensitivity: 100
 mode: '5dof'
 reference_frame: 'tcp'
 initial_gripper_state: 'open'
-dv: 0.01
+dv: 0.005
 drot: 0.03

@@ -9,6 +9,7 @@ from pathlib import Path
 from PIL import Image
 import numpy as np
 
+from robot_io.recorder.base_recorder import BaseRecorder
 from robot_io.utils.utils import depth_img_to_uint16
 from robot_io.utils.utils import depth_img_from_uint16
 
@@ -43,8 +44,8 @@ def unprocess_seg(pixel):
     return obj_uid, link_index
 
 
-class SimpleRecorder:
-    def __init__(self, env, save_dir="", n_digits=6):
+class SimpleRecorder(BaseRecorder):
+    def __init__(self, env, save_dir=None, n_digits=6):
         """
         PlaybackRecorder is a recorder to save frames with a simple step function.
         Recordings can be loaded with PlaybackEnv/PlaybackEnvStep.
@@ -59,14 +60,18 @@ class SimpleRecorder:
         self.save_frame_cnt = len(list(Path.cwd().glob("frame*.npz")))
         self.current_episode_filenames = []
         self.n_digits = n_digits
-        os.makedirs(self.save_dir, exist_ok=True)
+        if save_dir is None:
+            save_dir = os.getcwd()
+        else:
+            os.makedirs(save_dir, exist_ok=True)
+        self.save_dir = save_dir
 
-    def step(self, action, obs, reward, done, info):
+    def step(self, obs, action, next_obs, rew, done, info, record_info):
         filename = f"frame_{self.save_frame_cnt:0{self.n_digits}d}.npz"
         filename = Path(self.save_dir) / filename
         self.current_episode_filenames.append(filename)
         self.save_frame_cnt += 1
-        self.queue.append((filename, action, obs, reward, done, info))
+        self.queue.append((filename, action, next_obs, rew, done, info))
 
     def process_queue(self, image_path=None):
         """
@@ -129,3 +134,8 @@ class SimpleRecorder:
         # Run subprocess using the command
         subprocess.run(subproc_cmd, check=True, shell=True)
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        pass

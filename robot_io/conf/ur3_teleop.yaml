@@ -4,6 +4,7 @@ defaults:
   - input: 3dmouse
   - recorder: simple_recorder
   - cams: camera_manager
+  - override cams/gripper_cam: realsense_d435
   - override hydra/job_logging: colorlog
   - override hydra/hydra_logging: colorlog
   - _self_
@@ -13,6 +14,10 @@ hydra:
     dir: ${save_dir}/${now:%Y-%m-%d}/${now:%H-%M-%S}
 
 save_dir: /tmp/test_record1
+
 env:
   freq: 15
   show_fps: false
+
+cams:
+  use_static_cam: false

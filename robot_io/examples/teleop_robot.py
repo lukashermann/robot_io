@@ -15,6 +15,7 @@ def main(cfg):
     robot = hydra.utils.instantiate(cfg.robot)
     env = hydra.utils.instantiate(cfg.env, robot=robot)
     obs = env.reset()
+    env.render()  # call render once, so that input windows appear on top.
     input_device = hydra.utils.instantiate(cfg.input, robot=robot)
 
     done = False
