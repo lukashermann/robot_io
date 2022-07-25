@@ -5,6 +5,7 @@ import threading
 import hydra
 import numpy as np
 
+from multiprocessing import RLock
 from robot_io.utils.utils import FpsController, timeit
 
 
@@ -15,13 +16,31 @@ class ThreadedCamera:
     def __init__(self, camera_cfg):
         self._camera_thread = _CameraThread(camera_cfg)
         self._camera_thread.start()
+        self._last_frame = 0
+    
+    @property
+    def resolution(self):
+        return self._camera_thread.camera.resolution
+    @property    
+    def crop_coords(self):
+        return self._camera_thread.camera.crop_coords
+    @property    
+    def resize_resolution(self):
+        return self._camera_thread.camera.resize_resolution
+    @property    
+    def name(self):
+        return self._camera_thread.camera.name
 
-    def get_image(self):
-        while self._camera_thread.rgb is None or self._camera_thread.depth is None:
+
+    @property
+    def frame_count(self):
+        return self._camera_thread.frame_count
+
+    def get_image(self, fetch_new=True):
+        while fetch_new and self._camera_thread.frame_count == self._last_frame:
             time.sleep(0.01)
-        rgb = self._camera_thread.rgb.copy()
-        depth = self._camera_thread.depth.copy()
-
+     
+        self.frame_count, rgb, depth = self._camera_thread.get_image()
         return rgb, depth
 
     def get_intrinsics(self):
@@ -66,11 +85,27 @@ class _CameraThread(threading.Thread):
         self.flag_exit = False
         self.rgb = None
         self.depth = None
+        self._lock = RLock()
+        self._frame_count = -1
 
     def run(self):
         while not self.flag_exit:
-            self.rgb, self.depth = self.camera.get_image()
+            rgb, depth = self.camera.get_image()
+            with self._lock:
+                self.rgb  = rgb
+                self.depth = depth
+                self._frame_count += 1
+
             self.fps_controller.step()
+
+    @property
+    def frame_count(self):
+        with self._lock:
+            return self._frame_count
+
+    def get_image(self):
+        with self._lock:
+            return self._frame_count, self.rgb, self.depth
 
 
 if __name__ == "__main__":
