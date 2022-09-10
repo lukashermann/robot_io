@@ -52,6 +52,9 @@ class ThreadedCamera:
     def deproject(self, point, depth, homogeneous=False):
         return self._camera_thread.camera.deproject(point, depth, homogeneous)
 
+    def project(self, x):
+        return self._camera_thread.camera.project(x)
+
 
 class _CameraThread(threading.Thread):
     def __init__(self, camera_cfg):

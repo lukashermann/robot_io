@@ -121,8 +121,7 @@ class Camera:
             depth: scalar or array, if array index with point
             homogeneous: boolean, return homogenous coordinates
         """
-
-        if depth.shape != self.resolution[::-1] and not np.isscalar(depth):
+        if not np.isscalar(depth) and depth.shape != self.resolution[::-1]:
             old_point = point
             old_depth = depth.copy()
             point_mat = np.zeros_like(depth)
