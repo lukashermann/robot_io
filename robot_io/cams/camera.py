@@ -122,7 +122,7 @@ class Camera:
             homogeneous: boolean, return homogenous coordinates
         """     
     
-        point_mat = np.zeros(self.resize_resolution)
+        point_mat = np.zeros((self.resize_resolution[1], self.resize_resolution[0]))
         point_mat[point[1], point[0]] = 1
         transformed_coords = self.revert_crop_and_resize(point_mat)
         y_candidates, x_candidates = np.where(transformed_coords == 1)
@@ -145,7 +145,6 @@ class Camera:
             Z = depth
         else:
             Z = depth[u_crd, v_crd]
-
         if Z == 0:
             return None
         X = (v_crd - cx) * Z / fx
