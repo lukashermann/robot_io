@@ -120,17 +120,17 @@ class Camera:
             point: (x, y)
             depth: scalar or array, if array index with point
             homogeneous: boolean, return homogenous coordinates
-        """
+        """     
+    
+        point_mat = np.zeros_like(depth)
+        point_mat[point[1], point[0]] = 1
+        transformed_coords = self.revert_crop_and_resize(point_mat)
+        y_candidates, x_candidates = np.where(transformed_coords == 1)
+        y_transformed = y_candidates[len(y_candidates) // 2]
+        x_transformed = x_candidates[len(x_candidates) // 2]
+        point = (x_transformed, y_transformed)
+
         if not np.isscalar(depth) and depth.shape != self.resolution[::-1]:
-            old_point = point
-            old_depth = depth.copy()
-            point_mat = np.zeros_like(depth)
-            point_mat[point[1], point[0]] = 1
-            transformed_coords = self.revert_crop_and_resize(point_mat)
-            y_candidates, x_candidates = np.where(transformed_coords == 1)
-            y_transformed = y_candidates[len(y_candidates) // 2]
-            x_transformed = x_candidates[len(x_candidates) // 2]
-            point = (x_transformed, y_transformed)
             depth = self.revert_crop_and_resize(depth)
 
         intr = self.get_intrinsics()

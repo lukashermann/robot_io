@@ -25,6 +25,9 @@ class ThreadedCamera:
 
         return rgb, depth
 
+    def get_resize_res(self):
+        return self._camera_thread.camera.resize_res
+
     def get_intrinsics(self):
         return self._camera_thread.camera.get_intrinsics()
 
