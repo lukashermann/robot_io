@@ -1,0 +1,4 @@
+defaults:
+ - panda_frankx_interface_vr
+
+fci_ip: "172.16.0.2"

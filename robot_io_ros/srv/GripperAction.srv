@@ -1,3 +1,3 @@
 bool blocking
 ---
-byte[] return # Pickled return
+uint8[] return # Pickled return

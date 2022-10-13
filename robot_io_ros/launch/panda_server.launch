@@ -1,0 +1,7 @@
+<launch>
+    <node name="panda_ros_server" pkg="robot_io_ros" type="robot_io_server.py" output="screen" cwd="node">
+         <param name="hydra_config_path" value="../../../../libs/robot_io/robot_io/conf"/>
+         <!-- <param name="hydra_robot_config" value="robot/panda_frankx_interface_vr"/> -->
+         <param name="hydra_robot_config" value="panda_teleop"/>
+    </node>
+</launch>

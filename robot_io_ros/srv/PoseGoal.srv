@@ -1,3 +1,3 @@
 geometry_msgs/Pose tcp_goal
 ---
-byte[] return # Pickled return
+uint8[] return # Pickled return

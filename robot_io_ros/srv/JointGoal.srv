@@ -1,3 +1,3 @@
 float64[] joint_goal # Must match the number of joints of the robot
 ---
-byte[] return # Pickled return
+uint8[] return # Pickled return
